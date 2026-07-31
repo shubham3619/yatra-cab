@@ -1,0 +1,12 @@
+@import '@yatracab/ui/base.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Admin / Ops accent — professional blue → indigo. */
+:root {
+  --yc-accent: 37 99 235; /* blue-600 */
+  --yc-accent-2: 79 70 229; /* indigo-600 */
+  --yc-accent-fg: 255 255 255;
+  --yc-accent-soft: 239 246 255; /* blue-50 */
+}

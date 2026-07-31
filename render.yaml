@@ -1,0 +1,53 @@
+# Render Blueprint — two Node web services (the customer/driver API and the
+# hardened admin API). MongoDB is external (use MongoDB Atlas free tier).
+#
+# Deploy: Render Dashboard → New → Blueprint → connect this repo. Then fill the
+# `sync: false` secrets in each service's Environment tab (see DEPLOYMENT.md).
+services:
+  # ── Customer + Driver API (REST + Socket.io) ──────────────────────────────
+  - type: web
+    name: yatracab-server-app
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm install
+    startCommand: npm run start --workspace server-app
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PAYMENT_PROVIDER
+        value: mock
+      - key: MONGODB_URI          # mongodb+srv://... (Atlas)
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: APP_CLIENT_URLS      # https://<customer-site>.netlify.app,https://<driver-site>.netlify.app
+        sync: false
+      - key: GMAIL_USER           # optional — for real OTP emails
+        sync: false
+      - key: GMAIL_APP_PASSWORD   # optional
+        sync: false
+
+  # ── Admin / Ops API (independent, hardened) ───────────────────────────────
+  - type: web
+    name: yatracab-server-admin
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm install
+    startCommand: npm run start --workspace server-admin
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI          # SAME Atlas URI as server-app (shared database)
+        sync: false
+      - key: JWT_ACCESS_SECRET    # can be independent — admin tokens are separate
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: ADMIN_CLIENT_URLS    # https://<admin-site>.netlify.app
+        sync: false

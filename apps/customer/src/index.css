@@ -1,0 +1,12 @@
+@import '@yatracab/ui/base.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Rider portal accent — vivid violet → fuchsia. */
+:root {
+  --yc-accent: 124 58 237; /* violet-600 */
+  --yc-accent-2: 217 70 239; /* fuchsia-500 */
+  --yc-accent-fg: 255 255 255;
+  --yc-accent-soft: 245 243 255; /* violet-50 */
+}

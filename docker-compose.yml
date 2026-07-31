@@ -1,0 +1,35 @@
+# Spin up MongoDB (and an optional web admin) for local YatraCab dev:
+#   docker compose up -d
+# Mongo is then reachable at mongodb://127.0.0.1:27017/yatracab
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: yatracab-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - yatracab_mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Optional: browse the DB at http://localhost:8081
+  mongo-express:
+    image: mongo-express:1.0.2
+    container_name: yatracab-mongo-express
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://mongo:27017/
+      ME_CONFIG_BASICAUTH: "false"
+
+volumes:
+  yatracab_mongo_data:

@@ -1,0 +1,12 @@
+@import '@yatracab/ui/base.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Captain (driver) portal accent — fresh emerald → teal. */
+:root {
+  --yc-accent: 5 150 105; /* emerald-600 */
+  --yc-accent-2: 20 184 166; /* teal-500 */
+  --yc-accent-fg: 255 255 255;
+  --yc-accent-soft: 236 253 245; /* emerald-50 */
+}

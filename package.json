@@ -1,0 +1,33 @@
+{
+  "name": "yatracab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "YatraCab — trust-first cab platform for temple/pilgrimage travel (MERN + Socket.io)",
+  "type": "module",
+  "workspaces": [
+    "core",
+    "server-app",
+    "server-admin",
+    "apps/design-system",
+    "apps/customer",
+    "apps/driver",
+    "apps/admin"
+  ],
+  "scripts": {
+    "dev:app": "npm run dev --workspace server-app",
+    "dev:admin-api": "npm run dev --workspace server-admin",
+    "dev:customer": "npm run dev --workspace @yatracab/customer",
+    "dev:driver": "npm run dev --workspace @yatracab/driver",
+    "dev:admin": "npm run dev --workspace @yatracab/admin",
+    "dev:backend": "concurrently -n app,admin -c blue,red \"npm:dev:app\" \"npm:dev:admin-api\"",
+    "dev:frontend": "concurrently -n customer,driver,admin -c green,yellow,magenta \"npm:dev:customer\" \"npm:dev:driver\" \"npm:dev:admin\"",
+    "dev": "concurrently -n app,admin-api,customer,driver,admin -c blue,red,green,yellow,magenta \"npm:dev:app\" \"npm:dev:admin-api\" \"npm:dev:customer\" \"npm:dev:driver\" \"npm:dev:admin\"",
+    "db": "node ./scripts/dev-db.js",
+    "seed": "node ./scripts/seed.js",
+    "build": "npm run build --workspace @yatracab/customer && npm run build --workspace @yatracab/driver && npm run build --workspace @yatracab/admin"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1",
+    "mongodb-memory-server": "^11.2.0"
+  }
+}

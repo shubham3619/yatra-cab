@@ -1,0 +1,23 @@
+{
+  "name": "@yatracab/ui",
+  "version": "1.0.0",
+  "description": "YatraCab shared design system — Tailwind preset, UI components, API + auth kit.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./tailwind-preset": "./tailwind-preset.js",
+    "./base.css": "./src/base.css"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5",
+    "lucide-react": "^0.400.0",
+    "react": "^18",
+    "react-dom": "^18",
+    "react-router-dom": "^6"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "react-hot-toast": "^2.4.1"
+  }
+}

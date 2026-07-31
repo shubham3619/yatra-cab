@@ -1,0 +1,190 @@
+import { useState } from 'react';
+import { ArrowRight, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { cn } from '../lib/cn.js';
+import { Button } from './Button.jsx';
+import { Field, Input } from './Field.jsx';
+import { Segmented, Logo } from './Misc.jsx';
+import toast from 'react-hot-toast';
+
+/**
+ * Shared auth experience for every portal: a gradient hero panel + a glass
+ * card with an explicit Sign in / Create account flow (phone + OTP).
+ *
+ * Props:
+ *  - api            the app's API client
+ *  - role           'customer' | 'driver' | 'admin'
+ *  - allowSignup    show the Create-account tab (false for admin)
+ *  - brand          { mark, name, tagline }
+ *  - hero           { title, subtitle, highlights:[{icon,title,text}] }
+ *  - roleNoun       e.g. 'Rider', 'Captain', 'Admin'
+ *  - demoHint       small text under the form
+ *  - onAuthed(user, accessToken)
+ */
+export function AuthScreen({ api, role, allowSignup = true, brand, hero, roleNoun = 'account', demoHint, onAuthed }) {
+  const [mode, setMode] = useState('signin'); // signin | signup
+  const [step, setStep] = useState('form'); // form | otp
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [devOtp, setDevOtp] = useState(null);
+
+  const isSignup = mode === 'signup';
+
+  const requestOtp = async (e) => {
+    e.preventDefault();
+    if (!/^\+?[0-9]{10,13}$/.test(phone)) return toast.error('Enter a valid phone number');
+    if (isSignup && !name.trim()) return toast.error('Please enter your name');
+    setBusy(true);
+    try {
+      const res = await api.post('/auth/request-otp', { phone, email: email || undefined });
+      setDevOtp(res.devOtp || null);
+      setStep('otp');
+      toast.success(res.message || 'OTP sent');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verify = async (e) => {
+    e.preventDefault();
+    if (!/^[0-9]{6}$/.test(code)) return toast.error('Enter the 6-digit OTP');
+    setBusy(true);
+    try {
+      const body = { phone, code };
+      if (role !== 'admin') body.role = role;
+      if (isSignup) {
+        body.name = name || undefined;
+        body.email = email || undefined;
+      }
+      const res = await api.post('/auth/verify-otp', body);
+      await onAuthed(res.user, res.accessToken);
+      toast.success(`Welcome${res.user?.name ? `, ${res.user.name}` : ''}!`);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="grid min-h-screen lg:grid-cols-2">
+      {/* Hero panel */}
+      <div className="relative hidden overflow-hidden bg-brand-gradient p-12 text-white lg:flex lg:flex-col lg:justify-between">
+        <div className="yc-blob -left-16 -top-10 h-72 w-72 bg-white/25" />
+        <div className="yc-blob bottom-0 right-0 h-80 w-80 bg-black/20" style={{ animationDelay: '3s' }} />
+        <div className="pointer-events-none absolute inset-0 bg-dotted opacity-30" />
+
+        <div className="relative">
+          <Logo
+            mark={brand.mark}
+            name={brand.name}
+            tagline={brand.tagline}
+            className="[&_p:first-child]:text-white [&_p:last-child]:text-white/70 [&>span]:bg-white/15 [&>span]:shadow-none"
+          />
+        </div>
+        <div className="relative animate-slide-up">
+          <h1 className="whitespace-pre-line font-display text-[2.6rem] font-extrabold leading-[1.1] tracking-tight">{hero.title}</h1>
+          <p className="mt-4 max-w-md text-lg text-white/80">{hero.subtitle}</p>
+          <div className="mt-9 space-y-4">
+            {hero.highlights?.map((h) => (
+              <div key={h.title} className="flex items-start gap-3.5">
+                <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 backdrop-blur">
+                  <h.icon size={19} />
+                </span>
+                <div>
+                  <p className="font-semibold">{h.title}</p>
+                  <p className="text-sm text-white/70">{h.text}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <p className="relative flex items-center gap-1.5 text-sm text-white/55">
+          <ShieldCheck size={14} /> Verified {roleNoun.toLowerCase()}s · masked calls · secure payments
+        </p>
+      </div>
+
+      {/* Form panel */}
+      <div className="relative flex items-center justify-center overflow-hidden bg-ink-100 p-6">
+        <div className="yc-blob -right-24 top-10 h-64 w-64 bg-accent/20 lg:hidden" />
+        <div className="relative w-full max-w-sm animate-fade-in">
+          <div className="mb-7 lg:hidden">
+            <Logo mark={brand.mark} name={brand.name} tagline={brand.tagline} />
+          </div>
+
+          <div className="rounded-3xl border border-white/60 bg-white/80 p-7 shadow-soft backdrop-blur">
+            {step === 'form' ? (
+              <form onSubmit={requestOtp} className="space-y-4">
+                <div>
+                  <h2 className="font-display text-2xl font-bold text-ink-900">
+                    {allowSignup ? (isSignup ? 'Create your account' : 'Welcome back') : `${roleNoun} sign in`}
+                  </h2>
+                  <p className="mt-1 text-sm text-ink-500">We'll text a one-time code to verify you.</p>
+                </div>
+
+                {allowSignup && (
+                  <Segmented
+                    className="w-full [&>button]:flex-1"
+                    value={mode}
+                    onChange={(m) => setMode(m)}
+                    options={[{ value: 'signin', label: 'Sign in' }, { value: 'signup', label: 'Create account' }]}
+                  />
+                )}
+
+                {isSignup && (
+                  <Field label="Full name">
+                    <Input placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+                  </Field>
+                )}
+                <Field label="Phone number">
+                  <Input inputMode="numeric" placeholder="9000000010" value={phone} onChange={(e) => setPhone(e.target.value)} autoFocus={!isSignup} />
+                </Field>
+                {isSignup && (
+                  <Field label="Email" hint="for receipts & OTP">
+                    <Input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                  </Field>
+                )}
+
+                <Button type="submit" className="w-full" size="lg" loading={busy} icon={ArrowRight}>
+                  {isSignup ? 'Create account' : 'Send OTP'}
+                </Button>
+                {demoHint && <p className="text-center text-xs text-ink-400">{demoHint}</p>}
+              </form>
+            ) : (
+              <form onSubmit={verify} className="space-y-4">
+                <button type="button" onClick={() => setStep('form')} className="flex items-center gap-1 text-sm text-ink-500 transition-colors hover:text-ink-700">
+                  <ArrowLeft size={15} /> Back
+                </button>
+                <div>
+                  <h2 className="font-display text-2xl font-bold text-ink-900">Enter the code</h2>
+                  <p className="mt-1 text-sm text-ink-500">Sent to {phone}. Check your email or the server console.</p>
+                </div>
+                {devOtp && (
+                  <div className="rounded-xl bg-accent-soft px-4 py-3 text-sm text-accent">
+                    Dev OTP: <span className="font-semibold tracking-[0.3em]">{devOtp}</span>
+                  </div>
+                )}
+                <Field label="6-digit OTP">
+                  <Input
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="______"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                    className={cn('text-center text-2xl font-semibold tracking-[0.5em]')}
+                    autoFocus
+                  />
+                </Field>
+                <Button type="submit" className="w-full" size="lg" loading={busy}>Verify &amp; continue</Button>
+              </form>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
