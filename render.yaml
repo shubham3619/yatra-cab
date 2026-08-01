@@ -24,8 +24,8 @@ services:
         generateValue: true
       - key: JWT_REFRESH_SECRET
         generateValue: true
-      - key: APP_CLIENT_URLS      # https://<customer-site>.netlify.app,https://<driver-site>.netlify.app
-        sync: false
+      - key: APP_CLIENT_URLS      # customer + driver Netlify sites (public URLs, not secret)
+        value: https://yatra-cab-app.netlify.app,https://yatra-cab-driver.netlify.app
       - key: GMAIL_USER           # optional — for real OTP emails
         sync: false
       - key: GMAIL_APP_PASSWORD   # optional
@@ -49,5 +49,5 @@ services:
         generateValue: true
       - key: JWT_REFRESH_SECRET
         generateValue: true
-      - key: ADMIN_CLIENT_URLS    # https://<admin-site>.netlify.app
-        sync: false
+      - key: ADMIN_CLIENT_URLS    # admin Netlify site (public URL, not secret)
+        value: https://yatra-cab-admin.netlify.app
