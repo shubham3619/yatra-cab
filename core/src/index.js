@@ -61,7 +61,7 @@ export {
   pointsToDiscount,
 } from './services/referralService.js';
 export { fetchArrivalDelay } from './services/delayService.js';
-export { seedDatabase, isDatabaseEmpty } from './seedData.js';
+export { seedDatabase, isDatabaseEmpty, needsSeeding } from './seedData.js';
 export { requestOtp, verifyOtp } from './services/otpService.js';
 export {
   createOrder,

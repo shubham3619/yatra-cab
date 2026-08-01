@@ -1,6 +1,6 @@
 import './config/loadEnv.js';
 import http from 'http';
-import { connectDB, disconnectDB, logger, isDatabaseEmpty, seedDatabase } from '@yatracab/core';
+import { connectDB, disconnectDB, logger, needsSeeding, seedDatabase } from '@yatracab/core';
 import { createApp } from './app.js';
 import { appConfig } from './config/loadEnv.js';
 import { initSockets } from './sockets/index.js';
@@ -12,12 +12,15 @@ async function bootstrap() {
   // routes, demo accounts and an admin login when the database is empty.
   if (process.env.AUTO_SEED === 'true') {
     try {
-      if (await isDatabaseEmpty()) {
-        logger.info('AUTO_SEED: empty database — seeding demo data…');
-        await seedDatabase({ demoEmail: process.env.SEED_DEMO_EMAIL || process.env.GMAIL_USER, clear: false });
+      // Self-healing: (re)seed with a clean wipe whenever the admin account
+      // is missing (fresh DB, or a previous partial seed). Once seeded
+      // successfully it won't run again.
+      if (await needsSeeding()) {
+        logger.info('AUTO_SEED: seeding demo data (routes, accounts, admin)…');
+        await seedDatabase({ demoEmail: process.env.SEED_DEMO_EMAIL || process.env.GMAIL_USER, clear: true });
       }
     } catch (err) {
-      logger.warn(`AUTO_SEED skipped: ${err.message}`);
+      logger.warn(`AUTO_SEED failed: ${err.message}`);
     }
   }
 

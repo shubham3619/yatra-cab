@@ -34,11 +34,24 @@ export async function isDatabaseEmpty() {
   return (await Route.estimatedDocumentCount()) === 0;
 }
 
+/** Seed is needed if there are no routes OR no admin account (self-healing). */
+export async function needsSeeding() {
+  const [routeCount, hasAdmin] = await Promise.all([
+    Route.estimatedDocumentCount(),
+    User.exists({ role: 'admin' }),
+  ]);
+  return routeCount === 0 || !hasAdmin;
+}
+
 /**
  * Seed the database. Pass a real `demoEmail` to put it on the demo
  * admin/rider/driver accounts. `clear` wipes existing data first.
  */
 export async function seedDatabase({ demoEmail, clear = true } = {}) {
+  // Reconcile indexes with the current schema — drops any stale unique index
+  // (e.g. a legacy unique index on email) that would break seeding/signups.
+  await User.syncIndexes().catch((e) => logger.warn(`[seed] User.syncIndexes: ${e.message}`));
+
   if (clear) {
     logger.info('[seed] clearing existing data…');
     await Promise.all([
@@ -57,14 +70,14 @@ export async function seedDatabase({ demoEmail, clear = true } = {}) {
   const admin = await User.create({ name: 'Ops Admin', phone: '9000000001', email: demoEmail || 'admin@yatracab.test', role: 'admin', isPhoneVerified: true });
 
   const customers = await User.create([
-    { name: 'Radha Sharma', phone: '9000000010', email: demoEmail || 'radha@example.test', role: 'customer', isPhoneVerified: true, gender: 'female', vibes: ['music_lover', 'foodie'], emergencyContact: '9000000099', referralCode: 'RADXY7', points: 150, rating: 4.8, ratingCount: 6 },
+    { name: 'Radha Sharma', phone: '9000000010', email: 'radha@example.test', role: 'customer', isPhoneVerified: true, gender: 'female', vibes: ['music_lover', 'foodie'], emergencyContact: '9000000099', referralCode: 'RADXY7', points: 150, rating: 4.8, ratingCount: 6 },
     { name: 'Mohan Verma', phone: '9000000011', email: 'mohan@example.test', role: 'customer', isPhoneVerified: true, gender: 'male', vibes: ['silent_zone'], referralCode: 'MOHK3P', points: 50, rating: 4.6, ratingCount: 3 },
   ]);
   await User.updateOne({ _id: customers[1]._id }, { referredBy: customers[0]._id });
   await Referral.create({ referrer: customers[0]._id, referred: customers[1]._id, role: 'customer', code: 'RADXY7', rewardPoints: 50 });
 
   const driverSpecs = [
-    { name: 'Suresh Yadav', phone: '9000000020', email: demoEmail || 'suresh@example.test', gender: 'male', code: 'SURA1B', wallet: 500, vehicle: { type: 'sedan', make: 'Maruti', model: 'Dzire', plateNumber: 'RJ14AB1234', color: 'White', seats: 4 }, status: 'approved', online: true, rides: 128, rating: 4.9 },
+    { name: 'Suresh Yadav', phone: '9000000020', email: 'suresh@example.test', gender: 'male', code: 'SURA1B', wallet: 500, vehicle: { type: 'sedan', make: 'Maruti', model: 'Dzire', plateNumber: 'RJ14AB1234', color: 'White', seats: 4 }, status: 'approved', online: true, rides: 128, rating: 4.9 },
     { name: 'Ramesh Meena', phone: '9000000021', email: 'ramesh@example.test', gender: 'male', code: 'RAMC5D', wallet: 320, vehicle: { type: 'suv', make: 'Toyota', model: 'Innova Crysta', plateNumber: 'RJ14CD5678', color: 'Silver', seats: 7 }, status: 'approved', online: true, rides: 96, rating: 4.7 },
     { name: 'Sunita Devi', phone: '9000000022', email: 'sunita@example.test', gender: 'female', code: 'SUNE9F', wallet: 260, vehicle: { type: 'hatchback', make: 'Hyundai', model: 'i20', plateNumber: 'RJ14EF9012', color: 'Red', seats: 4 }, status: 'approved', online: true, rides: 54, rating: 4.8 },
     { name: 'Vikram Singh', phone: '9000000023', email: 'vikram@example.test', gender: 'male', code: 'VIKG3H', wallet: 200, vehicle: { type: 'suv', make: 'Mahindra', model: 'Scorpio', plateNumber: 'RJ14GH3456', color: 'Black', seats: 7 }, status: 'pending', online: false, rides: 0, rating: 5 },
