@@ -18,6 +18,14 @@ services:
         value: production
       - key: PAYMENT_PROVIDER
         value: mock
+      # Render's free tier blocks outbound SMTP, so email OTP can't be sent.
+      # DEMO_OTP returns the code in the API response (shown on screen) and
+      # accepts 123456 for the seeded accounts. Remove for a real email/paid setup.
+      - key: DEMO_OTP
+        value: "true"
+      # Seed routes + demo accounts + admin login on first boot (empty DB only).
+      - key: AUTO_SEED
+        value: "true"
       - key: MONGODB_URI          # mongodb+srv://... (Atlas)
         sync: false
       - key: JWT_ACCESS_SECRET
@@ -43,6 +51,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: DEMO_OTP             # admin login via demo OTP (SMTP blocked on free tier)
+        value: "true"
       - key: MONGODB_URI          # SAME Atlas URI as server-app (shared database)
         sync: false
       - key: JWT_ACCESS_SECRET    # can be independent — admin tokens are separate

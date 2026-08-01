@@ -40,7 +40,9 @@ export async function requestOtp(phone, { email, purpose = 'login' } = {}) {
   }
 
   let delivered = false;
-  if (destEmail) {
+  // In demo mode we don't try to email at all (the host may block SMTP) — the
+  // code is returned in the response and shown on screen instead.
+  if (!env.otp.demoMode && destEmail) {
     const res = await sendMail({
       to: destEmail,
       subject: `${env.otp.fromName} verification code: ${code}`,
@@ -50,12 +52,12 @@ export async function requestOtp(phone, { email, purpose = 'login' } = {}) {
       html: otpEmailHtml(code),
     });
     delivered = res.delivered;
-  } else {
+  } else if (!env.otp.demoMode) {
     logger.warn(`[otp] No email on file for ${phone}; OTP not emailed.`);
   }
 
-  // Dev convenience: surface the code when not truly delivered.
-  const exposeDev = !delivered && !env.isProd;
+  // Surface the code when in demo mode, or (in dev) when it wasn't delivered.
+  const exposeDev = env.otp.demoMode || (!delivered && !env.isProd);
   if (exposeDev) logger.info(`[otp:dev] ${phone} → ${code}`);
 
   return { delivered, channel: env.otp.channel, ...(exposeDev ? { devOtp: code } : {}) };
@@ -63,8 +65,8 @@ export async function requestOtp(phone, { email, purpose = 'login' } = {}) {
 
 /** Verify a submitted code. Throws ApiError on mismatch/expiry. */
 export async function verifyOtp(phone, code) {
-  // Seeded demo accounts accept the fixed DEV_OTP in non-prod.
-  if (!env.isProd && code === env.otp.devOtp) {
+  // Seeded demo accounts accept the fixed DEV_OTP in dev or demo mode.
+  if ((env.otp.demoMode || !env.isProd) && code === env.otp.devOtp) {
     await Otp.deleteOne({ phone });
     return true;
   }

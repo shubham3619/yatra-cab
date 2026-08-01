@@ -10,6 +10,10 @@ function getTransporter() {
     transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: { user: env.otp.gmailUser, pass: env.otp.gmailAppPassword },
+      // Fail fast rather than hang when the host blocks outbound SMTP.
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 8000,
     });
   }
   return transporter;
@@ -27,12 +31,12 @@ export async function sendMail({ to, subject, text, html }) {
     logger.info(`[mailer:dev] ${text || subject}`);
     return { delivered: false };
   }
-  await t.sendMail({
-    from: `"${env.otp.fromName}" <${env.otp.gmailUser}>`,
-    to,
-    subject,
-    text,
-    html,
-  });
-  return { delivered: true };
+  try {
+    await t.sendMail({ from: `"${env.otp.fromName}" <${env.otp.gmailUser}>`, to, subject, text, html });
+    return { delivered: true };
+  } catch (err) {
+    // Never let a mail failure (e.g. blocked SMTP port) break the request.
+    logger.warn(`[mailer] send to ${to} failed: ${err.message}`);
+    return { delivered: false };
+  }
 }

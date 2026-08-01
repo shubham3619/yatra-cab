@@ -48,6 +48,12 @@ export const env = {
     get devOtp() {
       return process.env.DEV_OTP || '123456';
     },
+    // Demo mode: skip email entirely, return the code in the API response and
+    // accept the fixed devOtp — used on hosts (e.g. Render free) that block
+    // outbound SMTP so email OTP can't be delivered.
+    get demoMode() {
+      return process.env.DEMO_OTP === 'true';
+    },
     get ttlMs() {
       return num(process.env.OTP_TTL_MS, 5 * 60 * 1000);
     },
