@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { api } from '../api.js';
 import { LiveMap } from '../components/LiveMap.jsx';
+import { PHOTOS } from '../lib/photos.js';
 
 // Reverse-geocode via OpenStreetMap (same provider as LocationInput).
 async function reverseGeocode(lat, lng) {
@@ -84,14 +85,16 @@ export default function Home() {
             icon={Navigation}
             title="One-Way"
             text="One side journey (drop-off)"
-            gradient="from-violet-600 to-fuchsia-500"
+            photo={PHOTOS.oneWay}
+            alt="Smiling man in a car"
           />
           <ServiceTile
             to="/book?trip=round_trip"
             icon={Repeat}
             title="Round Trip"
             text="Outstation & return"
-            gradient="from-indigo-600 to-violet-500"
+            photo={PHOTOS.roundTrip}
+            alt="Family taking a selfie by their car"
             sub={routesQ.data ? `${routesQ.data.length} popular routes` : null}
           />
         </div>
@@ -104,6 +107,8 @@ export default function Home() {
           text="Per-seat carpooling on daily routes — pay only for your seat."
           badge={seatRides != null ? `${seatRides} rides running` : null}
           cta="Find a seat"
+          photo={PHOTOS.seatShare}
+          alt="Group of friends enjoying a drive together"
         />
 
         {/* Ride alert — wide */}
@@ -114,24 +119,32 @@ export default function Home() {
           text="Post a Ride Alert and let verified drivers bid — you pick the best quote."
           cta="Post alert"
           tone="dark"
+          photo={PHOTOS.bidding}
+          alt="Happy man giving a thumbs up"
         />
 
         {/* Refer & earn banner */}
         <Link
           to="/rewards"
-          className="block overflow-hidden rounded-2xl bg-brand-gradient p-5 text-accent-fg shadow-glow transition-transform hover:-translate-y-0.5"
+          className="relative block overflow-hidden rounded-2xl bg-brand-gradient p-5 text-accent-fg shadow-glow transition-transform hover:-translate-y-0.5"
         >
-          <div className="flex items-center gap-4">
+          <img
+            src={PHOTOS.refer}
+            alt="Friends laughing together"
+            loading="lazy"
+            className="absolute inset-y-0 right-0 h-full w-2/5 object-cover opacity-90 [mask-image:linear-gradient(to_left,black_55%,transparent)]"
+          />
+          <div className="relative flex items-center gap-4 pr-24">
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 backdrop-blur">
               <Gift size={24} />
             </span>
             <div className="min-w-0 flex-1">
               <p className="font-display text-lg font-bold">Refer &amp; Kamao</p>
-              <p className="text-sm text-white/80">Earn points on every friend's ride — auto-discount on your next trip.</p>
+              <p className="text-sm text-white/85">Earn points on every friend's ride — auto-discount on your next trip.</p>
+              <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-white px-3.5 py-1.5 text-xs font-bold text-accent">
+                {user?.points ? `${user.points} pts` : 'Refer now'} <ChevronRight size={13} />
+              </span>
             </div>
-            <span className="flex items-center gap-1 rounded-full bg-white px-3.5 py-2 text-xs font-bold text-accent">
-              {user?.points ? `${user.points} pts` : 'Refer now'} <ChevronRight size={13} />
-            </span>
           </div>
         </Link>
       </div>
@@ -139,46 +152,62 @@ export default function Home() {
   );
 }
 
-function ServiceTile({ to, icon: Icon, title, text, gradient, sub }) {
+// Photo-backed square tile (RodBez style): image fills the card, dark
+// gradient keeps the text readable.
+function ServiceTile({ to, icon: Icon, title, text, photo, alt, sub }) {
   return (
     <Link
       to={to}
-      className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br ${gradient} p-4 text-white shadow-soft transition-transform hover:-translate-y-0.5`}
+      className="group relative block h-48 overflow-hidden rounded-2xl bg-ink-900 text-white shadow-soft transition-transform hover:-translate-y-0.5"
     >
-      <span className="absolute -right-4 -top-4 h-20 w-20 rounded-full bg-white/10 transition-transform group-hover:scale-125" />
-      <Icon size={22} className="mb-6" />
-      <p className="font-display text-lg font-bold leading-tight">{title}</p>
-      <p className="mt-0.5 text-xs text-white/75">{text}</p>
-      {sub && <p className="mt-1 text-[11px] font-medium text-white/90">{sub}</p>}
-      <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold">
-        Book now <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
-      </span>
+      <img src={photo} alt={alt} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+      <div className="absolute inset-0 bg-gradient-to-t from-ink-950/90 via-ink-950/35 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 p-4">
+        <span className="mb-1.5 flex h-8 w-8 items-center justify-center rounded-lg bg-white/15 backdrop-blur">
+          <Icon size={16} />
+        </span>
+        <p className="font-display text-lg font-bold leading-tight">{title}</p>
+        <p className="mt-0.5 text-xs text-white/80">{text}</p>
+        {sub && <p className="mt-0.5 text-[11px] font-medium text-white/90">{sub}</p>}
+        <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold">
+          Book now <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
+        </span>
+      </div>
     </Link>
   );
 }
 
-function WideTile({ to, icon: Icon, title, text, badge, cta, tone }) {
+// Wide tile with the photo filling the right edge.
+function WideTile({ to, icon: Icon, title, text, badge, cta, tone, photo, alt }) {
   const dark = tone === 'dark';
   return (
     <Link
       to={to}
-      className={`group flex items-center gap-4 rounded-2xl p-4.5 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-soft ${
+      className={`group relative flex items-center gap-4 overflow-hidden rounded-2xl p-5 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-soft ${
         dark ? 'bg-ink-900 text-white' : 'border border-ink-200/70 bg-white'
-      } p-5`}
+      }`}
     >
-      <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${dark ? 'bg-white/10 text-white' : 'bg-accent-soft text-accent'}`}>
+      {photo && (
+        <img
+          src={photo}
+          alt={alt}
+          loading="lazy"
+          className="absolute inset-y-0 right-0 h-full w-1/3 object-cover [mask-image:linear-gradient(to_left,black_60%,transparent)] transition-transform duration-500 group-hover:scale-105"
+        />
+      )}
+      <span className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${dark ? 'bg-white/10 text-white' : 'bg-accent-soft text-accent'}`}>
         <Icon size={23} />
       </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
+      <div className="relative min-w-0 flex-1 pr-16 sm:pr-24">
+        <div className="flex flex-wrap items-center gap-2">
           <p className={`font-display text-base font-bold ${dark ? 'text-white' : 'text-ink-900'}`}>{title}</p>
           {badge && <Badge tone={dark ? 'warning' : 'accent'}>{badge}</Badge>}
         </div>
-        <p className={`mt-0.5 text-xs ${dark ? 'text-white/70' : 'text-ink-500'}`}>{text}</p>
+        <p className={`mt-0.5 text-xs ${dark ? 'text-white/75' : 'text-ink-500'}`}>{text}</p>
+        <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-3.5 py-1.5 text-xs font-bold ${dark ? 'bg-white text-ink-900' : 'bg-brand-gradient text-accent-fg shadow-glow'}`}>
+          {cta} <ChevronRight size={13} className="transition-transform group-hover:translate-x-0.5" />
+        </span>
       </div>
-      <span className={`flex shrink-0 items-center gap-1 rounded-full px-3.5 py-2 text-xs font-bold ${dark ? 'bg-white text-ink-900' : 'bg-brand-gradient text-accent-fg shadow-glow'}`}>
-        {cta} <ChevronRight size={13} className="transition-transform group-hover:translate-x-0.5" />
-      </span>
     </Link>
   );
 }

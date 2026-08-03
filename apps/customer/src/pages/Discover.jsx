@@ -9,6 +9,7 @@ import {
   Compass, Navigation, MapPin, ArrowRight, Clock, ShieldCheck, Users2, Minus, Plus, Loader2,
 } from 'lucide-react';
 import { api } from '../api.js';
+import { PHOTOS } from '../lib/photos.js';
 
 const TYPE_OPTS = [
   { value: 'all', label: 'All' },
@@ -82,6 +83,7 @@ export default function Discover() {
               womenOnly ? 'border-accent bg-accent-soft text-accent' : 'border-ink-200 text-ink-600 hover:border-accent/40'
             }`}
           >
+            <img src={PHOTOS.womenOnly} alt="Two women travelling together" className="h-6 w-6 rounded-full border-2 border-white object-cover shadow-sm" />
             <ShieldCheck size={15} /> Women only
           </button>
         </CardBody>

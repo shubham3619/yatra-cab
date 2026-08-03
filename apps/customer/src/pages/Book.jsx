@@ -10,6 +10,7 @@ import {
   Users2, ShieldCheck, Minus, Plus, Train, ChevronDown,
 } from 'lucide-react';
 import { api } from '../api.js';
+import { PHOTOS } from '../lib/photos.js';
 
 const VEHICLES = ['hatchback', 'sedan', 'suv', 'tempo'];
 const defaultWhen = () => {
@@ -143,7 +144,10 @@ export default function Book() {
                   womenOnly ? 'border-accent bg-accent-soft text-accent' : 'border-ink-200 text-ink-600 hover:border-accent/40'
                 }`}
               >
-                <span className="flex items-center gap-1.5"><ShieldCheck size={15} /> Women only</span>
+                <span className="flex items-center gap-2">
+                  <img src={PHOTOS.womenOnly} alt="Two women travelling together" className="h-7 w-7 rounded-full border-2 border-white object-cover shadow-sm" />
+                  <ShieldCheck size={15} /> Women only
+                </span>
                 <span className={`relative h-5 w-9 rounded-full transition-colors ${womenOnly ? 'bg-accent' : 'bg-ink-300'}`}>
                   <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${womenOnly ? 'left-4' : 'left-0.5'}`} />
                 </span>
