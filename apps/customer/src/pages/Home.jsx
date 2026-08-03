@@ -123,32 +123,71 @@ export default function Home() {
           alt="Happy man giving a thumbs up"
         />
 
-        {/* Refer & earn banner */}
+        {/* Refer & earn banner — chain referral mechanic */}
         <Link
           to="/rewards"
           className="relative block overflow-hidden rounded-2xl bg-brand-gradient p-5 text-accent-fg shadow-glow transition-transform hover:-translate-y-0.5"
         >
-          <img
-            src={PHOTOS.refer}
-            alt="Friends laughing together"
-            loading="lazy"
-            className="absolute inset-y-0 right-0 h-full w-2/5 object-cover opacity-90 [mask-image:linear-gradient(to_left,black_55%,transparent)]"
-          />
-          <div className="relative flex items-center gap-4 pr-24">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 backdrop-blur">
-              <Gift size={24} />
-            </span>
+          <ChainIllustration className="pointer-events-none absolute -right-1 top-1/2 h-[92%] w-2/5 -translate-y-1/2 opacity-95" />
+          <div className="relative flex items-center gap-4 pr-28 sm:pr-36">
             <div className="min-w-0 flex-1">
-              <p className="font-display text-lg font-bold">Refer &amp; Kamao</p>
-              <p className="text-sm text-white/85">Earn points on every friend's ride — auto-discount on your next trip.</p>
+              <p className="font-display text-lg font-bold">Refer &amp; Kamao — chain rewards</p>
+              <p className="mt-0.5 text-sm text-white/85">
+                You refer a friend, they refer their friend — <span className="font-semibold text-white">their rides earn you a % too.</span> Lifetime, auto-credited.
+              </p>
               <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-white px-3.5 py-1.5 text-xs font-bold text-accent">
-                {user?.points ? `${user.points} pts` : 'Refer now'} <ChevronRight size={13} />
+                {user?.points ? `${user.points} pts` : 'Start your chain'} <ChevronRight size={13} />
               </span>
             </div>
           </div>
         </Link>
       </div>
     </div>
+  );
+}
+
+// Chain-referral illustration: You → Friend → Friend's friend, with the
+// reward % flowing back down the chain to your wallet.
+function ChainIllustration({ className }) {
+  return (
+    <svg viewBox="0 0 150 120" fill="none" className={className} aria-label="Referral chain: friends of friends also earn you rewards">
+      {/* chain links connecting the three people */}
+      <path d="M34 34 L64 58 M78 62 L106 40" stroke="white" strokeOpacity="0.85" strokeWidth="3" strokeLinecap="round" strokeDasharray="1 7" />
+      {/* person 1 — you */}
+      <g>
+        <circle cx="24" cy="26" r="13" fill="white" fillOpacity="0.95" />
+        <circle cx="24" cy="22" r="4.5" fill="rgb(124 58 237)" />
+        <path d="M16 32c1.5-4 4.5-6 8-6s6.5 2 8 6" stroke="rgb(124 58 237)" strokeWidth="2.6" strokeLinecap="round" fill="none" />
+      </g>
+      {/* person 2 — your friend */}
+      <g>
+        <circle cx="71" cy="62" r="11" fill="white" fillOpacity="0.85" />
+        <circle cx="71" cy="58.5" r="3.8" fill="rgb(124 58 237)" />
+        <path d="M64.5 67c1.3-3.4 3.8-5 6.5-5s5.2 1.6 6.5 5" stroke="rgb(124 58 237)" strokeWidth="2.2" strokeLinecap="round" fill="none" />
+      </g>
+      {/* person 3 — friend's friend */}
+      <g>
+        <circle cx="116" cy="34" r="9.5" fill="white" fillOpacity="0.75" />
+        <circle cx="116" cy="31" r="3.2" fill="rgb(124 58 237)" />
+        <path d="M110.5 38.5c1.1-2.9 3.2-4.3 5.5-4.3s4.4 1.4 5.5 4.3" stroke="rgb(124 58 237)" strokeWidth="2" strokeLinecap="round" fill="none" />
+      </g>
+      {/* % coins flowing back along the chain */}
+      <g fontFamily="system-ui" fontWeight="700" textAnchor="middle">
+        <circle cx="95" cy="55" r="8" fill="#fbbf24" />
+        <text x="95" y="58.5" fontSize="9" fill="#78350f">%</text>
+        <circle cx="49" cy="42" r="8" fill="#fbbf24" />
+        <text x="49" y="45.5" fontSize="9" fill="#78350f">%</text>
+      </g>
+      {/* wallet receiving the rewards, under "you" */}
+      <g>
+        <rect x="10" y="78" width="42" height="28" rx="6" fill="white" fillOpacity="0.95" />
+        <rect x="10" y="86" width="42" height="4" fill="rgb(124 58 237)" fillOpacity="0.25" />
+        <circle cx="44" cy="92" r="5" fill="rgb(124 58 237)" />
+        <text x="44" y="95" fontSize="7" fill="white" fontWeight="700" textAnchor="middle" fontFamily="system-ui">₹</text>
+      </g>
+      {/* arrow: rewards drop into the wallet */}
+      <path d="M31 56 L31 70 M27 66 L31 71 L35 66" stroke="#fbbf24" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </svg>
   );
 }
 
