@@ -3,6 +3,7 @@ import { useAuth, LoadingScreen } from '@yatracab/ui';
 import Layout from './components/Layout.jsx';
 import Login from './pages/Login.jsx';
 import Home from './pages/Home.jsx';
+import Book from './pages/Book.jsx';
 import MyRides from './pages/MyRides.jsx';
 import RideDetail from './pages/RideDetail.jsx';
 import Profile from './pages/Profile.jsx';
@@ -32,6 +33,7 @@ export default function App() {
         }
       >
         <Route path="/" element={<Home />} />
+        <Route path="/book" element={<Book />} />
         <Route path="/discover" element={<Discover />} />
         <Route path="/rewards" element={<Rewards />} />
         <Route path="/rides" element={<MyRides />} />

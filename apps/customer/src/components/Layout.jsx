@@ -3,7 +3,8 @@ import { useAuth, Logo, Avatar, IconButton } from '@yatracab/ui';
 import { Car, Home, ScrollText, User, LogOut, Compass, Gift } from 'lucide-react';
 
 const NAV = [
-  { to: '/', label: 'Book', icon: Home, end: true, mobile: true },
+  { to: '/', label: 'Home', icon: Home, end: true, mobile: true },
+  { to: '/book', label: 'Book', icon: Car, mobile: false },
   { to: '/discover', label: 'Discover', icon: Compass, mobile: true },
   { to: '/rides', label: 'My Rides', icon: ScrollText, mobile: true },
   { to: '/rewards', label: 'Rewards', icon: Gift, mobile: true },
