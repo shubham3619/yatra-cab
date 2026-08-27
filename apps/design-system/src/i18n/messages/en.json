@@ -97,10 +97,10 @@
     "shareSeatText": "Per-seat carpooling on daily routes — pay only for your seat.",
     "ridesRunning": "{count} rides running",
     "findSeat": "Find a seat",
-    "yourBudget": "Your Budget For This Ride",
-    "yourBudgetText": "Tell us your budget and let verified drivers bid — you pick the best quote.",
-    "postAlert": "Post alert",
-    "referTitle": "Refer & Kamao — chain rewards"
+    "referTitle": "Refer & Kamao — chain rewards",
+    "referText": "You refer a friend, they refer their friend — their rides earn you a % too. Lifetime, auto-credited.",
+    "pts": "{n} pts",
+    "startChain": "Start your chain"
   },
   "Book": {
     "title": "Book a ride",

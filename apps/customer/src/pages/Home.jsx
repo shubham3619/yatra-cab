@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth, Badge, toast, useTranslations } from '@yatracab/ui';
 import {
-  MapPin, Navigation, ArrowRight, Repeat, Users2, Gavel, Gift, Sparkles, ChevronRight, Car, Route as RouteIcon,
+  MapPin, Navigation, ArrowRight, Repeat, Users2, Gift, Sparkles, ChevronRight, Car, Route as RouteIcon,
 } from 'lucide-react';
 import { api } from '../api.js';
 import { LiveMap } from '../components/LiveMap.jsx';
@@ -111,18 +111,6 @@ export default function Home() {
           alt="Group of friends enjoying a drive together"
         />
 
-        {/* Ride alert — wide */}
-        <WideTile
-          to="/book?mode=bidding"
-          icon={Gavel}
-          title={t('yourBudget')}
-          text={t('yourBudgetText')}
-          cta={t('postAlert')}
-          tone="dark"
-          photo={PHOTOS.bidding}
-          alt="Happy man giving a thumbs up"
-        />
-
         {/* Refer & earn banner — chain referral mechanic */}
         <Link
           to="/rewards"
@@ -133,10 +121,10 @@ export default function Home() {
             <div className="min-w-0 flex-1">
               <p className="font-display text-lg font-bold">{t('referTitle')}</p>
               <p className="mt-0.5 text-sm text-white/85">
-                You refer a friend, they refer their friend — <span className="font-semibold text-white">their rides earn you a % too.</span> Lifetime, auto-credited.
+                {t('referText')}
               </p>
               <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-white px-3.5 py-1.5 text-xs font-bold text-accent">
-                {user?.points ? `${user.points} pts` : 'Start your chain'} <ChevronRight size={13} />
+                {user?.points ? t('pts', { n: user.points }) : t('startChain')} <ChevronRight size={13} />
               </span>
             </div>
           </div>
