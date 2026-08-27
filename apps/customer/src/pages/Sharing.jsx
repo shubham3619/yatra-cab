@@ -20,6 +20,9 @@ const TYPE_OPTS = [
 
 // Addresses come back as "Sindhi Camp, Station Road, Jaipur" — the city is the
 // part that actually matches a driver's published route, so search on that.
+// 135 → "2h 15m", 40 → "40m"
+const humanMins = (m) => (m >= 60 ? `${Math.floor(m / 60)}h ${m % 60 ? `${m % 60}m` : ''}`.trim() : `${m}m`);
+
 const cityOf = (address = '') => {
   const parts = address.split(',').map((p) => p.trim()).filter(Boolean);
   return parts[parts.length - 1] || address;
@@ -36,20 +39,24 @@ export default function Sharing() {
   const navigate = useNavigate();
   // Pickup is the rider's own location — fetched, never typed. They only say
   // where they want to go.
-  const [loc, setLoc] = useState(null); // { lat, lng }
-  const [locLabel, setLocLabel] = useState('');
+  // Pickup is editable — a rider may want a seat from somewhere other than
+  // where they're standing — but GPS seeds it so most never touch it.
+  const [fromPlace, setFromPlace] = useState(null);
   const [toPlace, setToPlace] = useState(null);
+  const [gpsSeeded, setGpsSeeded] = useState(false);
   const [locating, setLocating] = useState(false);
   const [type, setType] = useState('all');
   const [womenOnly, setWomenOnly] = useState(false);
   const [booking, setBooking] = useState(null); // route being booked
 
   const query = useQuery({
-    queryKey: ['daily-routes', loc?.lat, loc?.lng, type, womenOnly, toPlace?.address],
+    queryKey: ['daily-routes', fromPlace?.lat, fromPlace?.lng, toPlace?.lat, toPlace?.lng, type, womenOnly],
     queryFn: () => {
       const params = new URLSearchParams();
-      // The rider's coordinates decide which rides start near them.
-      if (loc?.lat != null) { params.set('lat', loc.lat); params.set('lng', loc.lng); }
+      // Both ends are sent as coordinates so the server can rank by how close
+      // each route runs to them, not just by a text match.
+      if (fromPlace?.lat != null) { params.set('lat', fromPlace.lat); params.set('lng', fromPlace.lng); }
+      if (toPlace?.lat != null) { params.set('toLat', toPlace.lat); params.set('toLng', toPlace.lng); }
       if (toPlace?.address) params.set('to', cityOf(toPlace.address));
       if (type !== 'all') params.set('type', type);
       if (womenOnly) params.set('womenOnly', 'true');
@@ -60,23 +67,26 @@ export default function Sharing() {
 
   const clearSearch = () => setToPlace(null);
   const searching = Boolean(toPlace);
+  const loc = fromPlace;
 
   // Resolve coordinates to something a rider recognises ("Bais Godam, Jaipur").
-  const resolveLabel = useCallback(async (lat, lng) => {
+  // GPS seeds the pickup field with a readable address, so the rider sees where
+  // we think they are and can overwrite it.
+  const seedPickup = useCallback(async (lat, lng) => {
+    let address = '';
     try {
       const res = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}&limit=1&lang=en`, {
         headers: { Accept: 'application/json' },
       });
-      const { features = [] } = await res.json();
-      const p = features[0]?.properties;
-      if (!p) return;
+      const p = (await res.json()).features?.[0]?.properties;
       const tidy = (v = '') =>
         v.replace(/\s+(Municipal Corporation|Municipality|Nagar Nigam|Tehsil|District|Division)$/i, '').trim();
-      setLocLabel([p.name || p.district, tidy(p.city || p.county || '')].filter(Boolean).join(', '));
+      address = [p?.name || p?.district, tidy(p?.city || p?.county || '')].filter(Boolean).join(', ');
     } catch {
-      /* a missing label is cosmetic — the coordinates still drive the search */
+      /* label is cosmetic — the coordinates still drive the search */
     }
-  }, []);
+    setFromPlace({ address: address || t('usingMyLocation'), lat, lng });
+  }, [t]);
 
   const locate = useCallback(
     ({ silent = false } = {}) => {
@@ -84,10 +94,8 @@ export default function Sharing() {
       setLocating(true);
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          const next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          setLoc(next);
           setLocating(false);
-          resolveLabel(next.lat, next.lng);
+          seedPickup(pos.coords.latitude, pos.coords.longitude);
         },
         () => {
           setLocating(false);
@@ -97,13 +105,15 @@ export default function Sharing() {
       );
       return undefined;
     },
-    [t, resolveLabel]
+    [t, seedPickup]
   );
 
-  // Fetch on arrival: the rider should only have to say where they're going.
+  // Seed once on arrival; after that the field is the rider's to edit.
   useEffect(() => {
+    if (gpsSeeded) return;
+    setGpsSeeded(true);
     locate({ silent: true });
-  }, [locate]);
+  }, [gpsSeeded, locate]);
 
 
   return (
@@ -115,8 +125,8 @@ export default function Sharing() {
         </div>
       </div>
 
-      {/* Destination only — pickup is the rider's own location, fetched for
-          them, since everyone starts somewhere different. */}
+      {/* Both ends: a shared ride is the driver's own route, so we match on
+          where it starts and where it ends, at city level. */}
       <Card>
         <CardBody className="space-y-3">
           <div className="flex items-center justify-between">
@@ -130,35 +140,35 @@ export default function Sharing() {
             )}
           </div>
 
-          <LocationInput
-            value={toPlace}
-            onChange={setToPlace}
-            placeholder={t('whereToPlaceholder')}
-            icon={MapPin}
-            onError={toast.error}
-          />
+          <div>
+            <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-ink-400">{t('pickupLabel')}</p>
+            <LocationInput
+              value={fromPlace}
+              onChange={setFromPlace}
+              placeholder={t('pickupPlaceholder')}
+              allowCurrentLocation
+              icon={Navigation}
+              onError={toast.error}
+            />
+          </div>
 
-          {/* Where we think they are, and a way to fix it. */}
+          <div>
+            <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-ink-400">{t('dropLabel')}</p>
+            <LocationInput
+              value={toPlace}
+              onChange={setToPlace}
+              placeholder={t('dropPlaceholder')}
+              icon={MapPin}
+              onError={toast.error}
+            />
+          </div>
+
           {locating ? (
             <p className="flex items-center gap-1.5 text-xs text-ink-400">
               <Loader2 size={12} className="animate-spin" /> {t('detectingLocation')}
             </p>
-          ) : loc ? (
-            <p className="flex items-center gap-1.5 text-xs text-ink-500">
-              <Navigation size={12} className="shrink-0 text-accent" />
-              {t('fromYourLocation', { place: locLabel || t('nearMeOn') })}
-              <button type="button" onClick={() => locate()} className="ml-auto shrink-0 font-medium text-ink-400 underline-offset-2 hover:text-ink-900 hover:underline">
-                {t('nearMe')}
-              </button>
-            </p>
           ) : (
-            <button
-              type="button"
-              onClick={() => locate()}
-              className="flex w-full items-center gap-1.5 rounded-lg bg-accent-soft px-3 py-2 text-xs font-medium text-accent"
-            >
-              <Navigation size={12} /> {t('locationOff')}
-            </button>
+            <p className="text-xs text-ink-400">{t('matchHint')}</p>
           )}
         </CardBody>
       </Card>
@@ -256,9 +266,25 @@ function RouteCard({ route, onBook }) {
           <span className="truncate font-medium text-ink-800">{route.destination?.address}</span>
         </div>
 
+        {/* Departure is the thing riders scan for, so it gets its own row. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-ink-900 px-2.5 py-1.5 text-sm font-bold text-white">
+            <Clock size={14} /> {route.departureTime || '—'}
+          </span>
+          {route.departsInMins != null && route.departsInMins < 24 * 60 && (
+            <span className="rounded-lg bg-accent-soft px-2.5 py-1.5 text-xs font-semibold text-accent">
+              {route.departsInMins <= 1 ? t('departsNow') : t('departsIn', { time: humanMins(route.departsInMins) })}
+            </span>
+          )}
+          {route.distanceToDropKm != null && (
+            <span className="rounded-lg bg-ink-100 px-2.5 py-1.5 text-xs font-medium text-ink-600">
+              {t('toYourDrop', { km: route.distanceToDropKm })}
+            </span>
+          )}
+        </div>
+
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-ink-500">
-          <span className="inline-flex items-center gap-1"><Clock size={12} /> {route.departureTime || '—'}</span>
-          {route.distanceKm > 0 && <span>· {route.distanceKm} km</span>}
+          {route.distanceKm > 0 && <span>{route.distanceKm} km</span>}
           {isShare && <span>· {route.seatsTotal} seats</span>}
           <span className="inline-flex flex-wrap gap-1">
             {(route.days || []).map((d) => (

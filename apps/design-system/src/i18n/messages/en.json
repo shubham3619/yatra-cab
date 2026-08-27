@@ -312,6 +312,16 @@
     "useMyLocation": "Use my location",
     "ridesFound": "{count} rides going there",
     "noneToDestination": "No rides to {place} yet",
-    "permissionDenied": "Location permission denied — showing all routes"
+    "permissionDenied": "Location permission denied — showing all routes",
+    "pickupLabel": "Pickup",
+    "dropLabel": "Going to",
+    "pickupPlaceholder": "Where you'll board",
+    "dropPlaceholder": "Where you're headed",
+    "usingMyLocation": "Using your location",
+    "departsIn": "in {time}",
+    "departsNow": "leaving now",
+    "nextDeparture": "Next departure",
+    "toYourDrop": "{km} km from your drop",
+    "matchHint": "Rides heading your way show first, then the soonest to leave."
   }
 }

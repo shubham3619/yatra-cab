@@ -28,6 +28,20 @@ const haversineKm = (aLat, aLng, bLat, bLng) => {
   return Math.round(2 * R * Math.asin(Math.sqrt(h)) * 10) / 10;
 };
 
+/**
+ * Minutes until a daily route's next departure. A route at 08:00 seen at 18:00
+ * is tomorrow's, so it should rank behind one leaving in two hours — comparing
+ * raw clock times would put it first.
+ */
+const minutesUntilDeparture = (hhmm = '', now = new Date()) => {
+  const [h, m] = String(hhmm).split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return Number.MAX_SAFE_INTEGER;
+  const dep = new Date(now);
+  dep.setHours(h, m, 0, 0);
+  if (dep <= now) dep.setDate(dep.getDate() + 1);
+  return Math.round((dep - now) / 60000);
+};
+
 const dayRange = (when) => {
   const start = new Date(when);
   start.setHours(0, 0, 0, 0);
@@ -55,52 +69,67 @@ async function seatsTakenOn(routeId, when) {
 // GET /customer/daily-routes?lat=&lng=&type=&womenOnly=
 // Driver's pre-set daily routine routes, nearest first (GPS priority sorting).
 export const browseDailyRoutes = catchAsync(async (req, res) => {
-  const { lat, lng, type, womenOnly, from, to, radiusKm } = req.query;
+  const { lat, lng, toLat, toLng, type, womenOnly, from, to, radiusKm } = req.query;
   const filter = { active: true };
   if (type) filter.bookingType = type;
   if (womenOnly === 'true') filter.womenOnly = true;
 
-  // Free-text from → to search. Riders type a city or landmark, so match
-  // loosely against the stored addresses rather than requiring an exact place.
+  // A shared ride is the driver's own route, so match at city level: whatever
+  // the rider types, we want routes that pass near it rather than an exact hit.
   if (from?.trim()) filter['origin.address'] = new RegExp(escapeRegex(from.trim()), 'i');
   if (to?.trim()) filter['destination.address'] = new RegExp(escapeRegex(to.trim()), 'i');
 
-  // With coordinates, $near sorts by distance from the rider's pickup, so
-  // vehicles starting nearby (or passing close) surface first.
-  let query;
-  if (lat && lng) {
+  const hasPickup = lat && lng;
+  const radius = Math.round((Number(radiusKm) || 60) * 1000);
+
+  // $near imposes its own distance ordering, so use it only as a radius filter
+  // — the real ranking happens below and needs more than one factor.
+  if (hasPickup) {
     filter.originPoint = {
-      $near: {
-        $geometry: { type: 'Point', coordinates: [Number(lng), Number(lat)] },
-        $maxDistance: Math.round((Number(radiusKm) || 50) * 1000),
-      },
+      $near: { $geometry: { type: 'Point', coordinates: [Number(lng), Number(lat)] }, $maxDistance: radius },
     };
-    query = DriverRoute.find(filter);
-  } else {
-    query = DriverRoute.find(filter).sort({ createdAt: -1 });
   }
 
-  const routes = await query
-    .limit(40)
+  const routes = await (hasPickup ? DriverRoute.find(filter) : DriverRoute.find(filter).sort({ createdAt: -1 }))
+    .limit(60)
     .populate({ path: 'driver', select: 'vehicle rating completedRides user', populate: { path: 'user', select: 'name' } })
     .lean();
 
-  // Seats already taken today, so the UI can show real availability.
   const today = new Date();
   const booked = await Promise.all(
     routes.map((r) => (r.bookingType === 'seat_share' ? seatsTakenOn(r._id, today) : 0))
   );
 
-  const enriched = routes.map((r, i) => ({
-    ...r,
-    seatsBooked: booked[i],
-    seatsLeft: Math.max(0, (r.seatsTotal || 0) - booked[i]),
-    ...(lat && lng
-      ? { distanceFromYouKm: haversineKm(Number(lat), Number(lng), r.origin?.lat, r.origin?.lng) }
-      : {}),
-  }));
+  const enriched = routes.map((r, i) => {
+    const pickupKm = hasPickup ? haversineKm(Number(lat), Number(lng), r.origin?.lat, r.origin?.lng) : null;
+    const dropKm =
+      toLat && toLng ? haversineKm(Number(toLat), Number(toLng), r.destination?.lat, r.destination?.lng) : null;
+    return {
+      ...r,
+      seatsBooked: booked[i],
+      seatsLeft: Math.max(0, (r.seatsTotal || 0) - booked[i]),
+      distanceFromYouKm: pickupKm,
+      distanceToDropKm: dropKm,
+      departsInMins: minutesUntilDeparture(r.departureTime, today),
+    };
+  });
 
-  return ok(res, { routes: enriched, searched: Boolean(from || to || (lat && lng)) });
+  // Ranking, in the order that matters to a rider looking for a seat:
+  //   1. goes near where they're going  2. starts near them  3. leaves soonest
+  // Distances are banded so a few hundred metres doesn't outrank a much
+  // earlier departure.
+  const band = (km, size) => (km == null ? 0 : Math.floor(km / size));
+  enriched.sort(
+    (a, b) =>
+      band(a.distanceToDropKm, 25) - band(b.distanceToDropKm, 25) ||
+      band(a.distanceFromYouKm, 5) - band(b.distanceFromYouKm, 5) ||
+      a.departsInMins - b.departsInMins
+  );
+
+  return ok(res, {
+    routes: enriched,
+    searched: Boolean(from || to || hasPickup),
+  });
 });
 
 // POST /customer/daily-routes/:id/book  { seats, scheduledAt }

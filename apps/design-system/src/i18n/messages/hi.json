@@ -312,6 +312,16 @@
     "useMyLocation": "मेरी लोकेशन लें",
     "ridesFound": "वहाँ जाने वाली {count} राइड",
     "noneToDestination": "{place} के लिए अभी कोई राइड नहीं",
-    "permissionDenied": "लोकेशन की अनुमति नहीं मिली — सभी रूट दिखा रहे हैं"
+    "permissionDenied": "लोकेशन की अनुमति नहीं मिली — सभी रूट दिखा रहे हैं",
+    "pickupLabel": "पिकअप",
+    "dropLabel": "कहाँ जाना है",
+    "pickupPlaceholder": "कहाँ से बैठेंगे",
+    "dropPlaceholder": "कहाँ जाना है",
+    "usingMyLocation": "आपकी लोकेशन से",
+    "departsIn": "{time} में",
+    "departsNow": "अभी निकल रही है",
+    "nextDeparture": "अगली रवानगी",
+    "toYourDrop": "आपके ड्रॉप से {km} किमी",
+    "matchHint": "आपकी तरफ़ जाने वाली राइड पहले, फिर जो जल्दी निकले।"
   }
 }
