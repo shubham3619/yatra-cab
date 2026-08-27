@@ -56,11 +56,30 @@ export function applySecurity(app, { allowedOrigins = [], rateLimitMax = 300, js
   );
 }
 
-// A tight limiter for OTP endpoints (SMS/email bombing defence).
+// OTP limiting, in two layers.
+//
+// Keying on IP alone was wrong: everyone behind one office or mobile-carrier
+// NAT shares a bucket, so a handful of people signing in locks out the rest —
+// and in development every portal and script comes from ::1, which wedges the
+// whole app. The per-phone limit is what actually stops SMS bombing; the IP
+// limit is a wider net against someone enumerating numbers from one machine.
+const normalisePhone = (v) => String(v || '').replace(/[^0-9]/g, '').slice(-10);
+
+/** Stops one number being bombed with texts. */
 export const otpRateLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
-  max: 5,
+  max: env.isProd ? 5 : 50, // dev shares one machine across three portals
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, message: 'Too many OTP requests. Try again later.' },
+  keyGenerator: (req) => normalisePhone(req.body?.phone) || `ip:${req.ip}`,
+  message: { success: false, message: 'Too many codes requested for this number. Try again in a few minutes.' },
+});
+
+/** Backstop: one machine should not be able to walk the phone-number space. */
+export const otpAbuseLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: env.isProd ? 40 : 500,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many OTP requests from this device. Try again later.' },
 });

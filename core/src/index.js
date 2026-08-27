@@ -26,7 +26,7 @@ export { requireAuth, optionalAuth } from './middleware/auth.js';
 export { allow } from './middleware/role.js';
 export { validate } from './middleware/validate.js';
 export { notFound, errorHandler } from './middleware/error.js';
-export { applySecurity, otpRateLimiter } from './middleware/security.js';
+export { applySecurity, otpRateLimiter, otpAbuseLimiter } from './middleware/security.js';
 
 // Utils
 export { ApiError } from './utils/apiError.js';
