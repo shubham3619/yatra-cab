@@ -68,6 +68,9 @@ export const env = {
     get razorpayKeySecret() {
       return process.env.RAZORPAY_KEY_SECRET || '';
     },
+    get razorpayWebhookSecret() {
+      return process.env.RAZORPAY_WEBHOOK_SECRET || '';
+    },
   },
   business: {
     get feePercent() {

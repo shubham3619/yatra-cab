@@ -31,6 +31,7 @@ import {
   pageMeta,
 } from '@yatracab/core';
 import { emitToRoute, emitToRide, emitToUser, emitToDrivers } from '../../realtime.js';
+import { confirmPaidRide } from './paymentConfirm.js';
 import {
   assignDriverForFixedRide,
   applyRatingToDriver,
@@ -437,34 +438,15 @@ export const verifyRidePayment = catchAsync(async (req, res) => {
     throw ApiError.badRequest('Payment verification failed');
   }
 
-  payment.status = 'paid';
-  payment.paymentId = paymentId;
-  payment.signature = signature;
-  payment.paidAt = new Date();
-  await payment.save();
-
-  // Assign a driver for fixed rides (bidding rides already have one).
-  if (ride.mode === 'fixed' && !ride.driver) {
-    const driver = await assignDriverForFixedRide(ride);
-    if (driver) ride.driver = driver._id;
-  }
-  ride.status = RIDE_STATUS.CONFIRMED;
-  // Checkpoints 2 and 3 — issued once paid, held by the rider only.
-  ride.verification = ride.verification || {};
-  if (ride.verification.payment) ride.verification.payment.verifiedAt = new Date();
-  ride.verification.start = { code: otp6() };
-  ride.verification.end = { code: otp6() };
-  await ride.save();
-
-  if (ride.driver) {
-    const driver = await Driver.findById(ride.driver).select('user');
-    if (driver) {
-      emitToUser(String(driver.user), 'ride:assigned', { rideId: String(ride._id) });
-      notify(driver.user, { title: 'New ride assigned', body: 'A fixed-route ride is confirmed for you.' });
-    }
-  }
-  notify(req.user._id, { title: 'Booking confirmed', body: 'Your advance fee is paid. Have a great trip!' });
-  emitToRide(String(ride._id), 'ride:updated', { rideId: String(ride._id), status: ride.status });
+  // Same path the webhook takes, so a ride confirmed by either route ends up
+  // in exactly the same state — and whichever arrives second is a no-op.
+  await confirmPaidRide({
+    payment,
+    ride,
+    paymentId,
+    signature,
+    assignDriver: assignDriverForFixedRide,
+  });
 
   const populated = await Ride.findById(ride._id).populate({
     path: 'driver',

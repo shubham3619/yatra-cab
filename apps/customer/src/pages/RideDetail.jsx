@@ -14,6 +14,7 @@ import {
 import { api } from '../api.js';
 import { getSocket } from '../socket.js';
 import { LiveMap } from '../components/LiveMap.jsx';
+import { openCheckout } from '../lib/razorpay.js';
 
 export default function RideDetail() {
   const { id } = useParams();
@@ -162,27 +163,44 @@ function PaymentPanel({ ride, onDone }) {
   const refQuery = useQuery({ queryKey: ['referral'], queryFn: () => api.get('/customer/referral') });
   const points = refQuery.data?.points ?? user?.points ?? 0;
 
-  // Mock gateway flow: create order → verify with the returned mock token.
   const pay = async () => {
     setProcessing(true);
     try {
-      const { order, feeAmount, discount, pointsRedeemed } = await api.post(
+      const { order, feeAmount, discount, pointsRedeemed, devPaymentOtp } = await api.post(
         `/customer/rides/${ride._id}/payment/order`,
         { usePoints }
       );
       setApplied({ feeAmount, discount, pointsRedeemed });
-      await new Promise((r) => setTimeout(r, 1200)); // simulate checkout
-      await api.post(`/customer/rides/${ride._id}/payment/verify`, {
-        orderId: order.id,
-        paymentId: `pay_mock_${Date.now()}`,
-        signature: order.mockToken,
-      });
+
+      let verifyBody;
+      if (order.provider === 'razorpay') {
+        // Real gateway: Checkout returns the signature we verify server-side.
+        const res = await openCheckout({
+          keyId: order.keyId,
+          order,
+          description: `Advance for ${ride.destination || 'your ride'}`,
+          prefill: { name: user?.name, phone: user?.phone, email: user?.email },
+        });
+        verifyBody = {
+          orderId: res.razorpay_order_id,
+          paymentId: res.razorpay_payment_id,
+          signature: res.razorpay_signature,
+        };
+      } else {
+        // Mock provider: echo the deterministic token back.
+        await new Promise((r) => setTimeout(r, 900));
+        verifyBody = { orderId: order.id, paymentId: `pay_mock_${Date.now()}`, signature: order.mockToken };
+      }
+
+      await api.post(`/customer/rides/${ride._id}/payment/verify`, { ...verifyBody, otp: devPaymentOtp });
       toast.success(discount > 0 ? `Paid — ${inr(discount)} off with points!` : 'Payment successful — booking confirmed!');
       setOpen(false);
       refreshMe?.().catch(() => {});
       onDone();
     } catch (err) {
-      toast.error(err.message);
+      // A rider closing the sheet is not an error worth shouting about. The
+      // webhook still confirms anything they did pay for.
+      if (!err?.dismissed) toast.error(err.message);
     } finally {
       setProcessing(false);
     }
