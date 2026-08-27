@@ -108,7 +108,7 @@ export default function Home() {
         {/* Share a seat — deliberately location-agnostic: a specific route is
             only relevant to riders near it, so lead with the idea instead. */}
         <Link
-          to="/discover"
+          to="/sharing"
           className="group block overflow-hidden rounded-2xl border border-ink-200 bg-gradient-to-br from-accent-soft via-white to-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-soft"
         >
           <div className="flex items-center gap-5 p-5">

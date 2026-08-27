@@ -1,11 +1,11 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth, Logo, Avatar, IconButton, LanguageSwitcher, useTranslations } from '@yatracab/ui';
-import { Car, Home, ScrollText, User, LogOut, Compass, Gift } from 'lucide-react';
+import { Car, Home, ScrollText, User, LogOut, Users2, Gift } from 'lucide-react';
 
 const NAV = [
   { to: '/', key: 'home', icon: Home, end: true, mobile: true },
   { to: '/book', key: 'book', icon: Car, mobile: false },
-  { to: '/discover', key: 'discover', icon: Compass, mobile: true },
+  { to: '/sharing', key: 'sharing', icon: Users2, mobile: true },
   { to: '/rides', key: 'myRides', icon: ScrollText, mobile: true },
   { to: '/rewards', key: 'rewards', icon: Gift, mobile: true },
   { to: '/profile', key: 'profile', icon: User, mobile: true },

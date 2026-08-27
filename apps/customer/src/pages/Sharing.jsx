@@ -31,8 +31,8 @@ const defaultWhen = () => {
   return d.toISOString().slice(0, 16);
 };
 
-export default function Discover() {
-  const t = useTranslations('Discover');
+export default function Sharing() {
+  const t = useTranslations('Sharing');
   const navigate = useNavigate();
   // Pickup is the rider's own location — fetched, never typed. They only say
   // where they want to go.
@@ -212,7 +212,7 @@ export default function Discover() {
 }
 
 function RouteCard({ route, onBook }) {
-  const t = useTranslations('Discover');
+  const t = useTranslations('Sharing');
   const isShare = route.bookingType === 'seat_share';
   const price = isShare ? route.perSeatFare : route.fullCabFare;
   const driver = route.driver || {};

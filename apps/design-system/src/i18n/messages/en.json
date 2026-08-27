@@ -22,7 +22,6 @@
   "Nav": {
     "home": "Home",
     "book": "Book",
-    "discover": "Discover",
     "myRides": "My Rides",
     "rewards": "Rewards",
     "profile": "Profile",
@@ -34,7 +33,8 @@
     "referrals": "Referrals",
     "dailyRoutes": "Daily Routes",
     "rides": "Rides",
-    "routes": "Routes"
+    "routes": "Routes",
+    "sharing": "Sharing"
   },
   "Auth": {
     "welcomeBack": "Welcome back",
@@ -174,32 +174,6 @@
     "notSupported": "Location not supported on this device",
     "couldNotLocate": "Couldn't get your location"
   },
-  "Discover": {
-    "title": "Discover daily routes",
-    "subtitle": "Drivers running your route today — book a seat or the whole cab.",
-    "nearMe": "Near me",
-    "nearMeOn": "Near me ✓",
-    "clear": "Clear",
-    "all": "All",
-    "womenOnly": "Women only",
-    "kmFromPickup": "{km} km from your pickup",
-    "emptySearchTitle": "No vehicles on this route yet",
-    "emptySearchText": "Try a nearby city, widen your filters, or clear the search to see everything running today.",
-    "emptyTitle": "No daily routes near you yet",
-    "emptyText": "Try turning off filters, or check back soon — drivers publish routes daily.",
-    "shareSeats": "Share seats",
-    "fullCab": "Full cab",
-    "notSupported": "Location not supported on this device",
-    "whereTo": "Where do you want to go?",
-    "whereToPlaceholder": "Enter your destination",
-    "fromYourLocation": "Showing rides from {place}",
-    "detectingLocation": "Finding your location…",
-    "locationOff": "Turn on location to see rides starting near you",
-    "useMyLocation": "Use my location",
-    "ridesFound": "{count} rides going there",
-    "noneToDestination": "No rides to {place} yet",
-    "permissionDenied": "Location permission denied — showing all routes"
-  },
   "Rewards": {
     "title": "Rewards",
     "subtitle": "Earn points, refer friends, ride for less.",
@@ -313,5 +287,31 @@
     "needPhone": "Enter a phone number",
     "noPhoneInEntry": "Those entries had no phone number",
     "pickContacts": "Pick contacts"
+  },
+  "Sharing": {
+    "title": "Sharing",
+    "subtitle": "Share a ride with someone already going your way — take a seat or the whole cab.",
+    "nearMe": "Near me",
+    "nearMeOn": "Near me ✓",
+    "clear": "Clear",
+    "all": "All",
+    "womenOnly": "Women only",
+    "kmFromPickup": "{km} km from your pickup",
+    "emptySearchTitle": "No vehicles on this route yet",
+    "emptySearchText": "Try a nearby city, widen your filters, or clear the search to see everything running today.",
+    "emptyTitle": "No daily routes near you yet",
+    "emptyText": "Try turning off filters, or check back soon — drivers publish routes daily.",
+    "shareSeats": "Share seats",
+    "fullCab": "Full cab",
+    "notSupported": "Location not supported on this device",
+    "whereTo": "Where do you want to go?",
+    "whereToPlaceholder": "Enter your destination",
+    "fromYourLocation": "Showing rides from {place}",
+    "detectingLocation": "Finding your location…",
+    "locationOff": "Turn on location to see rides starting near you",
+    "useMyLocation": "Use my location",
+    "ridesFound": "{count} rides going there",
+    "noneToDestination": "No rides to {place} yet",
+    "permissionDenied": "Location permission denied — showing all routes"
   }
 }
