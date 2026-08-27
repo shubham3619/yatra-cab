@@ -109,9 +109,6 @@
   "Book": {
     "title": "Book a ride",
     "subtitle": "Tell us where and when — verified drivers send you their quotes.",
-    "howTravel": "How do you want to travel?",
-    "fullCab": "Full cab",
-    "shareSeats": "Share seats",
     "pickup": "Pickup",
     "drop": "Drop",
     "pickupPlaceholder": "Search pickup point",

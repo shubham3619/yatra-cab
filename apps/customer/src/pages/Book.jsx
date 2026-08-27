@@ -2,17 +2,16 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
-  Card, CardBody, Button, Field, Input, Textarea, Select, Segmented, LocationInput,
+  Card, CardBody, Button, Field, Input, Textarea, Select, LocationInput,
   EmptyState, toast,
   useTranslations,
 } from '@yatracab/ui';
 import {
   MapPin, Navigation, Gavel, Info, Route as RouteIcon, ArrowDown, Clock,
-  Users2, ShieldCheck, Minus, Plus, Train, ChevronDown,
+  Train, ChevronDown,
 } from 'lucide-react';
 import { api } from '../api.js';
 import { MapPicker } from '../components/MapPicker.jsx';
-import { PHOTOS } from '../lib/photos.js';
 
 const defaultWhen = () => {
   const d = new Date(Date.now() + 24 * 3600 * 1000);
@@ -37,9 +36,6 @@ export default function Book() {
   const [passengers, setPassengers] = useState(2);
   const [notes, setNotes] = useState('');
   const [biddingWindowMins, setBiddingWindowMins] = useState(30);
-  const [bookingType, setBookingType] = useState(params.get('type') === 'seat_share' ? 'seat_share' : 'full_cab');
-  const [seats, setSeats] = useState(1);
-  const [womenOnly, setWomenOnly] = useState(false);
   const [transportOpen, setTransportOpen] = useState(false);
   const [transportType, setTransportType] = useState('none');
   const [transportNumber, setTransportNumber] = useState('');
@@ -70,10 +66,7 @@ export default function Book() {
         passengers: Number(passengers),
         pickup,
         notes: notes.trim() || undefined,
-        bookingType,
-        womenOnly,
       };
-      if (bookingType === 'seat_share') base.seats = Number(seats);
       if (transportType !== 'none') {
         base.transport = {
           type: transportType,
@@ -108,48 +101,6 @@ export default function Book() {
         </div>
 
       </div>
-
-      {/* Booking type: full cab vs share seats */}
-      <Card>
-        <CardBody className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="flex items-center gap-1.5 text-sm font-medium text-ink-600"><Users2 size={15} className="text-accent" /> {t('howTravel')}</p>
-            <Segmented
-              value={bookingType}
-              onChange={setBookingType}
-              options={[{ value: 'full_cab', label: t('fullCab') }, { value: 'seat_share', label: t('shareSeats') }]}
-            />
-          </div>
-
-          {bookingType === 'seat_share' && (
-            <div className="grid gap-3 rounded-xl bg-ink-50 p-3.5 sm:grid-cols-2 animate-fade-in">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-ink-700">Seats</span>
-                <div className="flex items-center gap-3">
-                  <IconStep icon={Minus} disabled={seats <= 1} onClick={() => setSeats((s) => Math.max(1, s - 1))} />
-                  <span className="w-5 text-center text-base font-semibold text-ink-900">{seats}</span>
-                  <IconStep icon={Plus} disabled={seats >= 4} onClick={() => setSeats((s) => Math.min(4, s + 1))} />
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setWomenOnly((v) => !v)}
-                className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
-                  womenOnly ? 'border-accent bg-accent-soft text-accent' : 'border-ink-200 text-ink-600 hover:border-accent/40'
-                }`}
-              >
-                <span className="flex items-center gap-2">
-                  <img src={PHOTOS.womenOnly} alt="Two women travelling together" className="h-7 w-7 rounded-full border-2 border-white object-cover shadow-sm" />
-                  <ShieldCheck size={15} /> Women only
-                </span>
-                <span className={`relative h-5 w-9 rounded-full transition-colors ${womenOnly ? 'bg-accent' : 'bg-ink-300'}`}>
-                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${womenOnly ? 'left-4' : 'left-0.5'}`} />
-                </span>
-              </button>
-            </div>
-          )}
-        </CardBody>
-      </Card>
 
       {/* Pickup + drop */}
       <Card>
@@ -313,18 +264,5 @@ export default function Book() {
         <EmptyState icon={MapPin} title={t('emptyTitle')} message={t('emptyText')} />
       )}
     </div>
-  );
-}
-
-function IconStep({ icon: Icon, onClick, disabled }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="flex h-8 w-8 items-center justify-center rounded-lg border border-ink-200 text-ink-600 transition-colors hover:border-accent/40 disabled:opacity-40"
-    >
-      <Icon size={15} />
-    </button>
   );
 }
