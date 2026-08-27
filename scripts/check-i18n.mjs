@@ -55,7 +55,24 @@ for (const file of walk(path.join(root, 'apps'))) {
   }
 }
 
-console.log(`en ${Object.keys(en).length} keys · hi ${Object.keys(hi).length} keys · ${checked} call sites checked`);
+// A component that calls t() without useTranslations in scope compiles fine
+// and then throws "t is not defined" at runtime — the build cannot catch it.
+let scopes = 0;
+for (const file of walk(path.join(root, 'apps'))) {
+  const src = fs.readFileSync(file, 'utf8');
+  const fns = [...src.matchAll(/^(?:export\s+)?(?:default\s+)?function\s+(\w+)\s*\([^)]*\)\s*\{/gm)];
+  for (let i = 0; i < fns.length; i += 1) {
+    const start = fns[i].index + fns[i][0].length;
+    const body = src.slice(start, fns[i + 1] ? fns[i + 1].index : src.length);
+    if (!/\bt\('/.test(body)) continue;
+    scopes += 1;
+    if (!/useTranslations\(/.test(body)) {
+      problems.push(`${path.relative(root, file)} → ${fns[i][1]}() calls t() with no useTranslations in scope`);
+    }
+  }
+}
+
+console.log(`en ${Object.keys(en).length} keys · hi ${Object.keys(hi).length} keys · ${checked} call sites · ${scopes} components checked`);
 if (problems.length) {
   console.error('\nProblems:');
   problems.forEach((p) => console.error('  ✗ ' + p));

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
@@ -34,8 +34,10 @@ const defaultWhen = () => {
 export default function Discover() {
   const t = useTranslations('Discover');
   const navigate = useNavigate();
-  const [loc, setLoc] = useState(null); // { lat, lng } — drives nearby priority
-  const [fromPlace, setFromPlace] = useState(null);
+  // Pickup is the rider's own location — fetched, never typed. They only say
+  // where they want to go.
+  const [loc, setLoc] = useState(null); // { lat, lng }
+  const [locLabel, setLocLabel] = useState('');
   const [toPlace, setToPlace] = useState(null);
   const [locating, setLocating] = useState(false);
   const [type, setType] = useState('all');
@@ -43,13 +45,11 @@ export default function Discover() {
   const [booking, setBooking] = useState(null); // route being booked
 
   const query = useQuery({
-    queryKey: ['daily-routes', loc?.lat, loc?.lng, type, womenOnly, fromPlace?.address, toPlace?.address],
+    queryKey: ['daily-routes', loc?.lat, loc?.lng, type, womenOnly, toPlace?.address],
     queryFn: () => {
       const params = new URLSearchParams();
-      // A searched pickup takes priority over raw GPS for nearby sorting.
-      const origin = fromPlace?.lat != null ? fromPlace : loc;
-      if (origin?.lat != null) { params.set('lat', origin.lat); params.set('lng', origin.lng); }
-      if (fromPlace?.address) params.set('from', cityOf(fromPlace.address));
+      // The rider's coordinates decide which rides start near them.
+      if (loc?.lat != null) { params.set('lat', loc.lat); params.set('lng', loc.lng); }
       if (toPlace?.address) params.set('to', cityOf(toPlace.address));
       if (type !== 'all') params.set('type', type);
       if (womenOnly) params.set('womenOnly', 'true');
@@ -58,25 +58,53 @@ export default function Discover() {
     },
   });
 
-  const clearSearch = () => { setFromPlace(null); setToPlace(null); };
-  const searching = Boolean(fromPlace || toPlace);
+  const clearSearch = () => setToPlace(null);
+  const searching = Boolean(toPlace);
 
-  const nearMe = () => {
-    if (!navigator.geolocation) return toast.error(t('notSupported'));
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setLocating(false);
-        toast.success(t('showingNear'));
-      },
-      () => {
-        setLocating(false);
-        toast.error('Location permission denied — browsing all routes');
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  };
+  // Resolve coordinates to something a rider recognises ("Bais Godam, Jaipur").
+  const resolveLabel = useCallback(async (lat, lng) => {
+    try {
+      const res = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}&limit=1&lang=en`, {
+        headers: { Accept: 'application/json' },
+      });
+      const { features = [] } = await res.json();
+      const p = features[0]?.properties;
+      if (!p) return;
+      const tidy = (v = '') =>
+        v.replace(/\s+(Municipal Corporation|Municipality|Nagar Nigam|Tehsil|District|Division)$/i, '').trim();
+      setLocLabel([p.name || p.district, tidy(p.city || p.county || '')].filter(Boolean).join(', '));
+    } catch {
+      /* a missing label is cosmetic — the coordinates still drive the search */
+    }
+  }, []);
+
+  const locate = useCallback(
+    ({ silent = false } = {}) => {
+      if (!navigator.geolocation) return !silent && toast.error(t('notSupported'));
+      setLocating(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setLoc(next);
+          setLocating(false);
+          resolveLabel(next.lat, next.lng);
+        },
+        () => {
+          setLocating(false);
+          if (!silent) toast.error(t('permissionDenied'));
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+      return undefined;
+    },
+    [t, resolveLabel]
+  );
+
+  // Fetch on arrival: the rider should only have to say where they're going.
+  useEffect(() => {
+    locate({ silent: true });
+  }, [locate]);
+
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -85,17 +113,15 @@ export default function Discover() {
           <h1 className="font-display text-2xl font-bold text-ink-900">{t('title')}</h1>
           <p className="text-sm text-ink-500">{t('subtitle')}</p>
         </div>
-        <Button variant={loc ? 'soft' : 'primary'} icon={locating ? Loader2 : Navigation} onClick={nearMe} loading={locating}>
-          {loc ? t('nearMeOn') : t('nearMe')}
-        </Button>
       </div>
 
-      {/* From → to search */}
+      {/* Destination only — pickup is the rider's own location, fetched for
+          them, since everyone starts somewhere different. */}
       <Card>
         <CardBody className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="flex items-center gap-1.5 text-sm font-semibold text-ink-900">
-              <Search size={15} /> {t('whereGoing')}
+              <Search size={15} /> {t('whereTo')}
             </p>
             {searching && (
               <button type="button" onClick={clearSearch} className="flex items-center gap-1 text-xs font-medium text-ink-500 hover:text-ink-900">
@@ -103,24 +129,37 @@ export default function Discover() {
               </button>
             )}
           </div>
-          <div>
-            <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-ink-400">{t('from')}</p>
-            <LocationInput
-              value={fromPlace}
-              onChange={setFromPlace}
-              placeholder={t('fromPlaceholder')}
-              allowCurrentLocation
-              icon={Navigation}
-              onError={toast.error}
-            />
-          </div>
-          <div>
-            <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-ink-400">{t('to')}</p>
-            <LocationInput value={toPlace} onChange={setToPlace} placeholder={t('toPlaceholder')} icon={MapPin} onError={toast.error} />
-          </div>
-          <p className="text-xs text-ink-400">
-            {t('priorityHint')}
-          </p>
+
+          <LocationInput
+            value={toPlace}
+            onChange={setToPlace}
+            placeholder={t('whereToPlaceholder')}
+            icon={MapPin}
+            onError={toast.error}
+          />
+
+          {/* Where we think they are, and a way to fix it. */}
+          {locating ? (
+            <p className="flex items-center gap-1.5 text-xs text-ink-400">
+              <Loader2 size={12} className="animate-spin" /> {t('detectingLocation')}
+            </p>
+          ) : loc ? (
+            <p className="flex items-center gap-1.5 text-xs text-ink-500">
+              <Navigation size={12} className="shrink-0 text-accent" />
+              {t('fromYourLocation', { place: locLabel || t('nearMeOn') })}
+              <button type="button" onClick={() => locate()} className="ml-auto shrink-0 font-medium text-ink-400 underline-offset-2 hover:text-ink-900 hover:underline">
+                {t('nearMe')}
+              </button>
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={() => locate()}
+              className="flex w-full items-center gap-1.5 rounded-lg bg-accent-soft px-3 py-2 text-xs font-medium text-accent"
+            >
+              <Navigation size={12} /> {t('locationOff')}
+            </button>
+          )}
         </CardBody>
       </Card>
 
@@ -173,6 +212,7 @@ export default function Discover() {
 }
 
 function RouteCard({ route, onBook }) {
+  const t = useTranslations('Discover');
   const isShare = route.bookingType === 'seat_share';
   const price = isShare ? route.perSeatFare : route.fullCabFare;
   const driver = route.driver || {};
