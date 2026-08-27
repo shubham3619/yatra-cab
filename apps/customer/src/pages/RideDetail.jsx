@@ -5,7 +5,7 @@ import {
   useAuth,
   Card, CardHeader, CardBody, Button, Badge, StatusBadge, Modal, Avatar, StarRating, StarPicker,
   Field, Textarea, QueryBoundary, LoadingScreen, EmptyState, toast,
-  inr, formatDateTime, timeUntil, vehicleLabel, RIDE_STATUS_META,
+  inr, formatDateTime, timeUntil, vehicleLabel, VehicleIcon, RIDE_STATUS_META,
 } from '@yatracab/ui';
 import {
   ArrowLeft, MapPin, Car, CalendarClock, Users, Phone, IndianRupee, Gavel, Star,
@@ -297,9 +297,14 @@ function BidsPanel({ rideId, bidsQuery, onAccepted }) {
                     <p className="truncate font-medium text-ink-900">{b.driver.name}</p>
                     <StarRating value={b.driver.rating} size={12} />
                   </div>
-                  <p className="text-xs text-ink-500">
-                    {vehicleLabel(b.driver.vehicle?.type)} · {b.driver.completedRides} rides
-                    {b.note ? ` · ${b.note}` : ''}
+                  <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-ink-500">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-ink-100 px-2 py-0.5 font-medium text-ink-800">
+                      <VehicleIcon type={b.driver.vehicle?.type} size={13} />
+                      {vehicleLabel(b.driver.vehicle?.type)}
+                    </span>
+                    {b.driver.vehicle?.seats ? <span>{b.driver.vehicle.seats} seats</span> : null}
+                    <span>· {b.driver.completedRides} rides</span>
+                    {b.note ? <span>· {b.note}</span> : null}
                   </p>
                 </div>
                 <div className="text-right">

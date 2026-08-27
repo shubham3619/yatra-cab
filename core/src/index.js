@@ -16,7 +16,9 @@ export { Otp } from './models/Otp.js';
 export { WalletTransaction } from './models/WalletTransaction.js';
 export { DriverRoute } from './models/DriverRoute.js';
 export { Referral } from './models/Referral.js';
+export { ReferralEarning } from './models/ReferralEarning.js';
 export { LocationShare } from './models/LocationShare.js';
+export { Contact, normalizePhone } from './models/Contact.js';
 export { SosAlert } from './models/SosAlert.js';
 
 // Middleware
@@ -58,6 +60,7 @@ export {
   ensureReferralCode,
   applyReferral,
   payDriverRecurringCommission,
+  payCustomerRideCommission,
   pointsToDiscount,
 } from './services/referralService.js';
 export { fetchArrivalDelay } from './services/delayService.js';

@@ -26,7 +26,9 @@ const rideSchema = new mongoose.Schema(
     seatsBooked: { type: Number, default: 0 },
     perSeatFare: { type: Number, default: 0 },
     womenOnly: { type: Boolean, default: false }, // women-only seat sharing
-    vehicleType: { type: String, enum: ['hatchback', 'sedan', 'suv', 'tempo'], required: true },
+    // 'any' = a Ride Alert with no vehicle preference: every driver sees it and
+    // the vehicle is whatever the rider picks from the bids.
+    vehicleType: { type: String, enum: ['hatchback', 'sedan', 'suv', 'tempo', 'any'], required: true },
     tripType: { type: String, enum: ['one_way', 'round_trip'], default: 'round_trip' },
 
     // Advance alert context — arrival delays auto-shift the ride time.
@@ -46,6 +48,14 @@ const rideSchema = new mongoose.Schema(
     },
     contactUnlocked: { type: Boolean, default: false },
     connectOtp: String, // shared after commission settles
+    // Three-point OTP verification. The rider holds every code; the driver
+    // never sees them. The end code is what stops a driver demanding more
+    // than the agreed fare — the ride cannot be closed without it.
+    verification: {
+      payment: { code: String, verifiedAt: Date },
+      start: { code: String, verifiedAt: Date },
+      end: { code: String, verifiedAt: Date },
+    },
 
     // Snapshot of trip endpoints (denormalised for dynamic point-to-point trips).
     pickup: { address: String, lat: Number, lng: Number },

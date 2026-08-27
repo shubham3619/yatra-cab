@@ -24,6 +24,8 @@
     "dev": "concurrently -n app,admin-api,customer,driver,admin -c blue,red,green,yellow,magenta \"npm:dev:app\" \"npm:dev:admin-api\" \"npm:dev:customer\" \"npm:dev:driver\" \"npm:dev:admin\"",
     "db": "node ./scripts/dev-db.js",
     "seed": "node ./scripts/seed.js",
+    "seed:contacts": "node ./scripts/seed-contacts.js",
+    "test:referral": "node ./scripts/test-referral-engine.mjs",
     "build": "npm run build --workspace @yatracab/customer && npm run build --workspace @yatracab/driver && npm run build --workspace @yatracab/admin"
   },
   "devDependencies": {

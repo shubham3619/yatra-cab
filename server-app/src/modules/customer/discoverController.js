@@ -15,18 +15,41 @@ import {
 } from '@yatracab/core';
 import { emitToUser } from '../../realtime.js';
 
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const haversineKm = (aLat, aLng, bLat, bLng) => {
+  if ([aLat, aLng, bLat, bLng].some((n) => typeof n !== 'number' || Number.isNaN(n))) return null;
+  const R = 6371;
+  const dLat = ((bLat - aLat) * Math.PI) / 180;
+  const dLng = ((bLng - aLng) * Math.PI) / 180;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((aLat * Math.PI) / 180) * Math.cos((bLat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return Math.round(2 * R * Math.asin(Math.sqrt(h)) * 10) / 10;
+};
+
 // GET /customer/daily-routes?lat=&lng=&type=&womenOnly=
 // Driver's pre-set daily routine routes, nearest first (GPS priority sorting).
 export const browseDailyRoutes = catchAsync(async (req, res) => {
-  const { lat, lng, type, womenOnly } = req.query;
+  const { lat, lng, type, womenOnly, from, to, radiusKm } = req.query;
   const filter = { active: true };
   if (type) filter.bookingType = type;
   if (womenOnly === 'true') filter.womenOnly = true;
 
+  // Free-text from → to search. Riders type a city or landmark, so match
+  // loosely against the stored addresses rather than requiring an exact place.
+  if (from?.trim()) filter['origin.address'] = new RegExp(escapeRegex(from.trim()), 'i');
+  if (to?.trim()) filter['destination.address'] = new RegExp(escapeRegex(to.trim()), 'i');
+
+  // With coordinates, $near sorts by distance from the rider's pickup, so
+  // vehicles starting nearby (or passing close) surface first.
   let query;
   if (lat && lng) {
     filter.originPoint = {
-      $near: { $geometry: { type: 'Point', coordinates: [Number(lng), Number(lat)] }, $maxDistance: 50000 },
+      $near: {
+        $geometry: { type: 'Point', coordinates: [Number(lng), Number(lat)] },
+        $maxDistance: Math.round((Number(radiusKm) || 50) * 1000),
+      },
     };
     query = DriverRoute.find(filter);
   } else {
@@ -38,7 +61,16 @@ export const browseDailyRoutes = catchAsync(async (req, res) => {
     .populate({ path: 'driver', select: 'vehicle rating completedRides user', populate: { path: 'user', select: 'name' } })
     .lean();
 
-  return ok(res, { routes });
+  // Surface the distance so the UI can show "2.4 km from you" on each result.
+  const withDistance =
+    lat && lng
+      ? routes.map((r) => ({
+          ...r,
+          distanceFromYouKm: haversineKm(Number(lat), Number(lng), r.origin?.lat, r.origin?.lng),
+        }))
+      : routes;
+
+  return ok(res, { routes: withDistance, searched: Boolean(from || to || (lat && lng)) });
 });
 
 // POST /customer/daily-routes/:id/book  { seats, scheduledAt }

@@ -55,7 +55,7 @@ export const VERIFICATION_META = {
 };
 
 export const vehicleLabel = (t) =>
-  ({ hatchback: 'Hatchback', sedan: 'Sedan', suv: 'SUV', tempo: 'Tempo Traveller' }[t] || t);
+  ({ hatchback: 'Hatchback', sedan: 'Sedan', suv: 'SUV', tempo: 'Tempo Traveller', any: 'Any vehicle' }[t] || t);
 
 export const initials = (name = '') =>
   name.trim().split(/\s+/).slice(0, 2).map((s) => s[0]?.toUpperCase()).join('') || '?';

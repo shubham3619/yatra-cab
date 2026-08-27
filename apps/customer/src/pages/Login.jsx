@@ -6,11 +6,11 @@ import { api } from '../api.js';
 const HERO = {
   title: 'Every journey, your way.',
   subtitle:
-    'Book a fixed-fare cab or name your price with live driver bidding — for outstation trips and city rides. Verified drivers, transparent pricing, no surprises.',
+    'Tell us where and when. Verified drivers send you their quotes — you compare vehicle, rating and price, then pick the one you want. Outstation trips and city rides.',
   highlights: [
     { icon: ShieldCheck, title: 'Verified drivers', text: 'Background-checked, insured and rated by riders.' },
     { icon: BadgeIndianRupee, title: 'Transparent pricing', text: 'A small advance fee online; the rest is cash to the driver.' },
-    { icon: Gavel, title: 'Fixed fares or bidding', text: 'Choose a set rate, or post a trip and compare quotes.' },
+    { icon: Gavel, title: 'You choose the quote', text: 'Compare drivers on vehicle, rating and price — no fixed menu.' },
   ],
 };
 

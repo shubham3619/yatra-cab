@@ -90,6 +90,25 @@ export const env = {
     get driverReferralPercent() {
       return num(process.env.DRIVER_REFERRAL_PERCENT, 10); // % of platform commission
     },
+    // Customer (rider) multi-level referral engine. All shares are a % of a
+    // ride's platform commission, so payouts can never exceed what we earned.
+    get customerReferralPercent() {
+      return num(process.env.CUSTOMER_REFERRAL_PERCENT, 20); // chain pool
+    },
+    get customerCashbackPercent() {
+      return num(process.env.CUSTOMER_CASHBACK_PERCENT, 10); // rider's own-ride cashback
+    },
+    // Chain pays only during the referred rider's first N completed rides.
+    get customerReferralWindowRides() {
+      return num(process.env.CUSTOMER_REFERRAL_WINDOW_RIDES, 25);
+    },
+    // An upline must have ridden within this many days to earn.
+    get customerReferralActiveDays() {
+      return num(process.env.CUSTOMER_REFERRAL_ACTIVE_DAYS, 30);
+    },
+    get customerReferralMonthlyCap() {
+      return num(process.env.CUSTOMER_REFERRAL_MONTHLY_CAP, 1000); // points / month / user
+    },
     get pointValue() {
       return num(process.env.POINT_VALUE, 1); // ₹ per point on redemption
     },

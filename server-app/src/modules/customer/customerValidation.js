@@ -50,7 +50,8 @@ export const fixedBookingSchema = Joi.object({
 export const rideAlertSchema = Joi.object({
   routeId: objectId.optional(),
   drop: dropLoc.optional(), // custom drop
-  vehicleType: vehicleType.required(),
+  // Optional: drivers bid with their own vehicle, the rider picks from the bids.
+  vehicleType: vehicleType.optional(),
   tripType: tripType.default('round_trip'),
   bookingType: bookingType.default('full_cab'),
   seats: Joi.number().integer().min(1).max(12).default(1),
@@ -59,7 +60,7 @@ export const rideAlertSchema = Joi.object({
   scheduledAt: Joi.date().greater('now').required(),
   passengers: Joi.number().integer().min(1).max(12).default(1),
   notes: Joi.string().max(300).allow('').optional(),
-  biddingWindowMins: Joi.number().integer().min(5).max(120).default(30),
+  biddingWindowMins: Joi.number().integer().min(5).max(720).default(30), // up to 12 hours
   pickup: pickupLoc.required(),
 }).or('routeId', 'drop');
 
@@ -80,6 +81,7 @@ export const shareSchema = Joi.object({ rideId: objectId.required() });
 export const redeemSchema = Joi.object({ usePoints: Joi.boolean().default(false) });
 
 export const paymentVerifySchema = Joi.object({
+  otp: Joi.string().pattern(/^[0-9]{6}$/).optional(),
   orderId: Joi.string().required(),
   paymentId: Joi.string().required(),
   signature: Joi.string().required(),
@@ -107,4 +109,22 @@ export const profileSchema = Joi.object({
     .allow('')
     .optional(),
   savedRoutes: Joi.array().items(objectId).optional(),
+});
+
+// Contacts the user hand-picked to invite. Capped at 50 per call — the
+// Contact Picker returns a tapped selection, not an address book.
+export const contactsSchema = Joi.object({
+  contacts: Joi.array()
+    .items(
+      Joi.object({
+        name: Joi.string().max(80).allow('').optional(),
+        phone: Joi.string()
+          .pattern(/^[+0-9 ()-]{8,20}$/)
+          .required(),
+        source: Joi.string().valid('picker', 'manual').default('picker'),
+      })
+    )
+    .min(1)
+    .max(50)
+    .required(),
 });

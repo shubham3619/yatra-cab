@@ -3,10 +3,11 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Captain (driver) portal accent — fresh emerald → teal. */
+/* Captain portal — forest → olive. A natural, grounded green that reads as
+   'go' without the neon. */
 :root {
-  --yc-accent: 5 150 105; /* emerald-600 */
-  --yc-accent-2: 20 184 166; /* teal-500 */
+  --yc-accent: 21 128 61;
+  --yc-accent-2: 101 163 13;
   --yc-accent-fg: 255 255 255;
-  --yc-accent-soft: 236 253 245; /* emerald-50 */
+  --yc-accent-soft: 240 253 244;
 }

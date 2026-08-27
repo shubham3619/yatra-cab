@@ -16,16 +16,37 @@ export default {
           soft: 'rgb(var(--yc-accent-soft) / <alpha-value>)',
           softer: 'rgb(var(--yc-accent-soft) / 0.55)',
         },
-        // Neutral surface scale (slate-based) for a calm, data-dense UI.
+        // Warm stone neutrals. A touch of earth in the greys is what stops the
+        // UI reading cold and clinical — surfaces feel like sandstone, not steel.
         ink: {
-          50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1',
-          400: '#94a3b8', 500: '#64748b', 600: '#475569', 700: '#334155',
-          800: '#1e293b', 900: '#0f172a', 950: '#020617',
+          50: '#fdfcfb', 100: '#f6f3ef', 200: '#e9e3dc', 300: '#d6cec4',
+          400: '#a8a29e', 500: '#78716c', 600: '#57534e', 700: '#44403c',
+          800: '#292524', 900: '#1c1917', 950: '#0c0a09',
         },
-        success: { DEFAULT: '#059669', soft: '#ecfdf5' },
-        warning: { DEFAULT: '#d97706', soft: '#fffbeb' },
-        danger: { DEFAULT: '#e11d48', soft: '#fff1f2' },
-        info: { DEFAULT: '#2563eb', soft: '#eff6ff' },
+        // The chrome is black & white; status stays in colour, because a
+        // cancelled ride and a confirmed one must never look the same.
+        success: { DEFAULT: '#15803d', soft: '#f0fdf4' },
+        warning: { DEFAULT: '#b45309', soft: '#fffbeb' },
+        danger: { DEFAULT: '#b91c1c', soft: '#fef2f2' },
+        info: { DEFAULT: '#1d4ed8', soft: '#eff6ff' },
+        // Vehicle-category accents — the ONLY colour left in the interface.
+        vehicle: {
+          hatchback: '#2563eb',
+          sedan: '#059669',
+          suv: '#d97706',
+          tempo: '#7c3aed',
+        },
+      },
+      fontSize: {
+        xs: ['0.8125rem', { lineHeight: '1.15rem' }],
+        sm: ['0.9375rem', { lineHeight: '1.375rem' }],
+        base: ['1.0625rem', { lineHeight: '1.6rem' }],
+        lg: ['1.1875rem', { lineHeight: '1.75rem' }],
+        xl: ['1.375rem', { lineHeight: '1.85rem' }],
+        '2xl': ['1.625rem', { lineHeight: '2.05rem' }],
+        '3xl': ['2rem', { lineHeight: '2.35rem' }],
+        '4xl': ['2.5rem', { lineHeight: '2.75rem' }],
+        '5xl': ['3.25rem', { lineHeight: '1.05' }],
       },
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
@@ -40,8 +61,8 @@ export default {
         card: '0 1px 2px 0 rgb(15 23 42 / 0.04), 0 2px 8px -2px rgb(15 23 42 / 0.08)',
         soft: '0 8px 30px -8px rgb(15 23 42 / 0.14)',
         pop: '0 20px 50px -12px rgb(15 23 42 / 0.28)',
-        glow: '0 10px 30px -8px rgb(var(--yc-accent) / 0.5)',
-        'glow-lg': '0 18px 45px -10px rgb(var(--yc-accent) / 0.55)',
+        glow: '0 10px 30px -8px rgb(var(--yc-accent) / 0.45)',
+        'glow-lg': '0 18px 45px -10px rgb(var(--yc-accent) / 0.5)',
       },
       keyframes: {
         'fade-in': { from: { opacity: 0, transform: 'translateY(6px)' }, to: { opacity: 1, transform: 'translateY(0)' } },

@@ -21,12 +21,23 @@ import toast from 'react-hot-toast';
  *  - onAuthed(user, accessToken)
  */
 export function AuthScreen({ api, role, allowSignup = true, brand, hero, roleNoun = 'account', demoHint, onAuthed }) {
-  const [mode, setMode] = useState('signin'); // signin | signup
+  const [mode, setMode] = useState(() =>
+    typeof window !== 'undefined' &&
+    (new URLSearchParams(window.location.search).get('ref') || sessionStorage.getItem('yc_ref'))
+      ? 'signup'
+      : 'signin'
+  ); // signin | signup
   const [step, setStep] = useState('form'); // form | otp
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
+  // Prefill from a share link: /?ref=RADXY7
+  const [referralCode, setReferralCode] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    const fromUrl = new URLSearchParams(window.location.search).get('ref');
+    return (fromUrl || sessionStorage.getItem('yc_ref') || '').toUpperCase();
+  });
   const [busy, setBusy] = useState(false);
   const [devOtp, setDevOtp] = useState(null);
 
@@ -59,6 +70,7 @@ export function AuthScreen({ api, role, allowSignup = true, brand, hero, roleNou
       if (isSignup) {
         body.name = name || undefined;
         body.email = email || undefined;
+        body.referralCode = referralCode.trim() || undefined;
       }
       const res = await api.post('/auth/verify-otp', body);
       await onAuthed(res.user, res.accessToken);
@@ -146,6 +158,17 @@ export function AuthScreen({ api, role, allowSignup = true, brand, hero, roleNou
                 {isSignup && (
                   <Field label="Email" hint="for receipts & OTP">
                     <Input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                  </Field>
+                )}
+                {isSignup && role === 'customer' && (
+                  <Field label="Referral code" hint="optional">
+                    <Input
+                      placeholder="Friend's code"
+                      maxLength={12}
+                      value={referralCode}
+                      onChange={(e) => setReferralCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                      className="tracking-widest"
+                    />
                   </Field>
                 )}
 

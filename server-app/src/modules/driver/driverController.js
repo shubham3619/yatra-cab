@@ -8,6 +8,7 @@ import {
   connectCall,
   notify,
   payDriverRecurringCommission,
+  payCustomerRideCommission,
   catchAsync,
   ApiError,
   ok,
@@ -106,9 +107,24 @@ export const updateLocation = catchAsync(async (req, res) => {
 });
 
 // GET /driver/alerts  (open Ride Alerts this driver can bid on)
+// A driver already on a trip must not be shown or allowed to take new work —
+// they can't serve it, and bidding mid-ride is how riders get stranded.
+async function activeRideFor(driverId) {
+  return Ride.findOne({
+    driver: driverId,
+    status: { $in: [RIDE_STATUS.CONFIRMED, RIDE_STATUS.ONGOING] },
+  })
+    .select('_id status pickup drop scheduledAt')
+    .lean();
+}
+
 export const listAlerts = catchAsync(async (req, res) => {
   const driver = await myDriver(req);
   ensureApproved(driver);
+
+  // On a trip? Return nothing, and tell the app why so it can show a banner.
+  const onTrip = await activeRideFor(driver._id);
+  if (onTrip) return ok(res, { alerts: [], blocked: true, activeRide: onTrip });
 
   const myActiveBids = await Bid.find({ driver: driver._id, status: 'active' }).distinct('ride');
   const routeFilter = driver.servesRoutes?.length
@@ -118,11 +134,13 @@ export const listAlerts = catchAsync(async (req, res) => {
   const alerts = await Ride.find({
     mode: 'bidding',
     status: RIDE_STATUS.SEARCHING,
-    vehicleType: driver.vehicle.type,
+    // No vehicle-type gate: a Ride Alert goes to every available driver, and
+    // the rider chooses from the bids by vehicle and price.
     biddingClosesAt: { $gt: new Date() },
     _id: { $nin: myActiveBids },
     ...routeFilter,
   })
+    .select('-verification')
     .sort({ scheduledAt: 1 })
     .populate('route', 'origin destination templeName floorPrice fairRange')
     .lean();
@@ -135,11 +153,19 @@ export const placeBid = catchAsync(async (req, res) => {
   const driver = await myDriver(req);
   ensureApproved(driver);
 
+  const onTrip = await activeRideFor(driver._id);
+  if (onTrip) throw ApiError.badRequest('Finish your current ride before bidding on a new one');
+
   const ride = await Ride.findById(req.params.id).populate('route', 'floorPrice destination');
   if (!ride || ride.mode !== 'bidding') throw ApiError.notFound('Ride Alert not found');
   if (ride.status !== RIDE_STATUS.SEARCHING) throw ApiError.badRequest('Bidding is closed for this ride');
   if (ride.biddingClosesAt && ride.biddingClosesAt < new Date()) throw ApiError.badRequest('The bidding window has closed');
-  if (ride.vehicleType !== driver.vehicle.type) throw ApiError.badRequest('This ride requests a different vehicle type');
+  // Only enforce a vehicle match when the rider actually asked for one. An
+  // open alert ('any') takes bids from every class — the rider picks the cab
+  // they want from the quotes.
+  if (ride.vehicleType !== 'any' && ride.vehicleType !== driver.vehicle.type) {
+    throw ApiError.badRequest('This ride requests a different vehicle type');
+  }
 
   const floor = ride.route?.floorPrice || 0;
   if (req.body.amount < floor) throw ApiError.badRequest(`Bid must be at least the floor price ₹${floor}`);
@@ -187,6 +213,7 @@ export const listMyRides = catchAsync(async (req, res) => {
 
   const [rides, total] = await Promise.all([
     Ride.find(filter)
+      .select('-verification') // the rider's OTP codes must never reach the driver
       .sort({ scheduledAt: 1 })
       .skip(skip)
       .limit(limit)
@@ -204,6 +231,15 @@ export const startRide = catchAsync(async (req, res) => {
   const ride = await Ride.findOne({ _id: req.params.id, driver: driver._id });
   if (!ride) throw ApiError.notFound('Ride not found');
   if (ride.status !== RIDE_STATUS.CONFIRMED) throw ApiError.badRequest('Only a confirmed ride can be started');
+
+  // Checkpoint 2 — the rider reads their start code to the driver. Proves the
+  // right rider is in the right cab before the trip begins.
+  const startCode = ride.verification?.start?.code;
+  if (startCode && String(req.body?.otp || '') !== startCode) {
+    throw ApiError.badRequest('Ask the rider for their 6-digit start code');
+  }
+  if (ride.verification?.start) ride.verification.start.verifiedAt = new Date();
+
   ride.status = RIDE_STATUS.ONGOING;
   ride.startedAt = new Date();
   await ride.save();
@@ -220,6 +256,16 @@ export const completeRide = catchAsync(async (req, res) => {
   if (![RIDE_STATUS.ONGOING, RIDE_STATUS.CONFIRMED].includes(ride.status)) {
     throw ApiError.badRequest('Ride is not in progress');
   }
+
+  // Checkpoint 3 — the rider only shares this code once the fare matches what
+  // was agreed. Without it the ride cannot be closed, so demanding extra cash
+  // gets the driver nowhere.
+  const endCode = ride.verification?.end?.code;
+  if (endCode && String(req.body?.otp || '') !== endCode) {
+    throw ApiError.badRequest('Ask the rider for their 6-digit drop-off code to close this ride');
+  }
+  if (ride.verification?.end) ride.verification.end.verifiedAt = new Date();
+
   ride.status = RIDE_STATUS.COMPLETED;
   ride.completedAt = new Date();
   await ride.save();
@@ -232,6 +278,8 @@ export const completeRide = catchAsync(async (req, res) => {
   // Driver-to-driver recurring commission (funded by the platform's share).
   const platformCommission = ride.commission?.amount || ride.feeAmount || 0;
   await payDriverRecurringCommission(driver, platformCommission, ride);
+  // Rider cashback + rider-to-rider referral chain (same commission pool).
+  await payCustomerRideCommission(ride);
 
   emitToRide(String(ride._id), 'ride:updated', { rideId: String(ride._id), status: ride.status });
   notify(ride.customer, { title: 'Ride completed', body: 'Thanks for travelling with YatraCab. Please rate your driver.' });

@@ -12,6 +12,7 @@ import {
   cancelSchema,
   rateSchema,
   profileSchema,
+  contactsSchema,
 } from './customerValidation.js';
 import {
   getQuote,
@@ -30,7 +31,8 @@ import {
 } from './customerController.js';
 import { browseDailyRoutes, bookDailyRoute } from './discoverController.js';
 import { raiseSos, createShare } from './safetyController.js';
-import { myReferral } from './referralController.js';
+import { myReferral, myReferralEarnings } from './referralController.js';
+import { listContacts, saveContacts, deleteContact, purgeContacts } from './contactsController.js';
 
 const router = Router();
 
@@ -61,5 +63,12 @@ router.post('/safety/share', validate(shareSchema), createShare);
 
 // Referral
 router.get('/referral', myReferral);
+router.get('/referral/earnings', myReferralEarnings);
+
+// Invite contacts (user-selected only)
+router.get('/contacts', listContacts);
+router.post('/contacts', validate(contactsSchema), saveContacts);
+router.delete('/contacts/:id', deleteContact);
+router.delete('/contacts', purgeContacts);
 
 export default router;

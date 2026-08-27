@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { api } from '../api.js';
 import { LiveMap } from '../components/LiveMap.jsx';
+import { OneWayRoad, RoundTripRoad } from '../components/RoadIllustration.jsx';
 import { PHOTOS } from '../lib/photos.js';
 
 // Reverse-geocode via OpenStreetMap (same provider as LocationInput).
@@ -85,16 +86,14 @@ export default function Home() {
             icon={Navigation}
             title="One-Way"
             text="One side journey (drop-off)"
-            photo={PHOTOS.oneWay}
-            alt="Smiling man in a car"
+            art={OneWayRoad}
           />
           <ServiceTile
             to="/book?trip=round_trip"
             icon={Repeat}
             title="Round Trip"
             text="Outstation & return"
-            photo={PHOTOS.roundTrip}
-            alt="Family taking a selfie by their car"
+            art={RoundTripRoad}
             sub={routesQ.data ? `${routesQ.data.length} popular routes` : null}
           />
         </div>
@@ -115,8 +114,8 @@ export default function Home() {
         <WideTile
           to="/book?mode=bidding"
           icon={Gavel}
-          title="Name Your Price"
-          text="Post a Ride Alert and let verified drivers bid — you pick the best quote."
+          title="Your Budget For This Ride"
+          text="Tell us your budget and let verified drivers bid — you pick the best quote."
           cta="Post alert"
           tone="dark"
           photo={PHOTOS.bidding}
@@ -193,7 +192,34 @@ function ChainIllustration({ className }) {
 
 // Photo-backed square tile (RodBez style): image fills the card, dark
 // gradient keeps the text readable.
-function ServiceTile({ to, icon: Icon, title, text, photo, alt, sub }) {
+function ServiceTile({ to, icon: Icon, title, text, photo, alt, sub, art: Art }) {
+  // Illustrated tiles sit on a light surface so the black road reads; photo
+  // tiles keep the dark scrim treatment.
+  if (Art) {
+    // Flex column, not an overlay: the road gets the space left over after the
+    // caption, so the two can never collide at any tile size.
+    return (
+      <Link
+        to={to}
+        className="group flex h-52 flex-col overflow-hidden rounded-2xl border border-ink-200 bg-gradient-to-b from-accent-soft to-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-soft"
+      >
+        <div className="min-h-0 flex-1 px-3 pt-3">
+          <Art className="h-full w-full transition-transform duration-500 group-hover:scale-105" />
+        </div>
+        <div className="shrink-0 px-4 pb-4 pt-2">
+          <p className="flex items-center gap-1.5 font-display text-lg font-bold leading-tight text-ink-900">
+            <Icon size={16} className="text-accent" /> {title}
+          </p>
+          <p className="mt-0.5 text-xs text-ink-500">{text}</p>
+          {sub && <p className="mt-0.5 text-[11px] font-medium text-ink-700">{sub}</p>}
+          <span className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-ink-900">
+            Book now <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
+          </span>
+        </div>
+      </Link>
+    );
+  }
+
   return (
     <Link
       to={to}
