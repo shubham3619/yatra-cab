@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Card, CardBody, Badge, PageHeader, QueryBoundary, LoadingScreen, EmptyState } from '@yatracab/ui';
+import { Card, CardBody, Badge, PageHeader, QueryBoundary, LoadingScreen, EmptyState, carMarkerHtml } from '@yatracab/ui';
 import { Radio, Car, Wifi, WifiOff } from 'lucide-react';
 import { api } from '../api.js';
 import { getSocket } from '../socket.js';
@@ -11,20 +11,7 @@ const JAIPUR = [26.9124, 75.7873];
 
 // Busy cars are accented, idle ones dark, so a glance shows utilisation.
 const carIcon = (heading = 0, busy = false) =>
-  L.divIcon({
-    className: '',
-    html: `<div style="width:26px;height:26px;transform:rotate(${heading}deg);transition:transform .4s ease">
-      <div style="width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;
-        background:${busy ? 'rgb(var(--yc-accent))' : '#1c1917'};border:2px solid #fff;
-        box-shadow:0 3px 10px -2px rgba(0,0,0,.45)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"
-             stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(-90deg)">
-          <path d="M5 17h14M6.5 17V9.5L9 6h6l2.5 3.5V17"/><circle cx="8" cy="17" r="1.6"/><circle cx="16" cy="17" r="1.6"/>
-        </svg>
-      </div></div>`,
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
-  });
+  L.divIcon({ className: '', html: carMarkerHtml({ heading, active: busy, size: 28 }), iconSize: [28, 28], iconAnchor: [14, 14] });
 
 export default function Live() {
   const holderRef = useRef(null);

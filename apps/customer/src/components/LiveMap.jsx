@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Crosshair } from 'lucide-react';
+import { carMarkerHtml } from '@yatracab/ui';
 
 const JAIPUR = [26.9124, 75.7873];
 
@@ -18,23 +19,9 @@ const pinIcon = L.divIcon({
   iconAnchor: [17, 34],
 });
 
-// Car marker. divIcon again (no bundler icon paths), and the heading rotates
-// the glyph so a moving car visibly points where it is going.
+// Shared with the ops map so both stay in step.
 const carIcon = (heading = 0, active = false) =>
-  L.divIcon({
-    className: '',
-    html: `<div style="width:30px;height:30px;transform:rotate(${heading}deg);transition:transform .4s ease">
-      <div style="width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;
-        background:${active ? 'rgb(var(--yc-accent))' : '#1c1917'};
-        box-shadow:0 4px 12px -2px rgba(0,0,0,.45);border:2px solid #fff">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"
-             stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(-90deg)">
-          <path d="M5 17h14M6.5 17V9.5L9 6h6l2.5 3.5V17"/><circle cx="8" cy="17" r="1.6"/><circle cx="16" cy="17" r="1.6"/>
-        </svg>
-      </div></div>`,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15],
-  });
+  L.divIcon({ className: '', html: carMarkerHtml({ heading, active, size: 30 }), iconSize: [30, 30], iconAnchor: [15, 15] });
 
 /**
  * Live OpenStreetMap panel. Centers on the user's GPS position (fallback:

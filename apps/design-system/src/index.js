@@ -15,6 +15,7 @@ export { Avatar, StarRating, StarPicker, PageHeader, Segmented, Logo } from './c
 export { AuthScreen } from './components/AuthScreen.jsx';
 export { LocationInput } from './components/LocationInput.jsx';
 export { VehicleIcon, VEHICLE_META } from './components/VehicleIcon.jsx';
+export { carMarkerHtml, facesLeft } from './components/carMarker.js';
 export { LanguageSwitcher } from './components/LanguageSwitcher.jsx';
 
 // i18n — namespaced messages, same authoring shape as the Affiliates frontend.
