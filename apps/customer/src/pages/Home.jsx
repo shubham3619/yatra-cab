@@ -30,6 +30,17 @@ export default function Home() {
   const [position, setPosition] = useState(null);
   const [address, setAddress] = useState('');
 
+  // Ambient "cars near me". Polled, not pushed: a rider does not need every
+  // driver's every move, and fanning the fleet to every open app is a lot of
+  // traffic for a decorative layer. The ride they book is pushed over a socket.
+  const nearbyQ = useQuery({
+    queryKey: ['nearby-drivers', position?.lat?.toFixed(3), position?.lng?.toFixed(3)],
+    queryFn: () =>
+      api.get(`/customer/drivers/nearby?lat=${position.lat}&lng=${position.lng}`).then((r) => r.drivers),
+    enabled: position?.lat != null,
+    refetchInterval: 15000,
+  });
+
   // Live data for the tiles.
   const routesQ = useQuery({ queryKey: ['routes'], queryFn: () => api.get('/shared/routes').then((r) => r.routes) });
   const sharesQ = useQuery({ queryKey: ['daily-routes-home'], queryFn: () => api.get('/customer/daily-routes').then((r) => r.routes) });
@@ -77,7 +88,7 @@ export default function Home() {
       </div>
 
       {/* Live map */}
-      <LiveMap position={position} onLocate={onLocate} className="h-[38vh] min-h-[240px] w-full sm:mt-4 sm:h-[300px] sm:rounded-2xl sm:border sm:border-ink-200/70" />
+      <LiveMap position={position} onLocate={onLocate} cars={nearbyQ.data || []} className="h-[38vh] min-h-[240px] w-full sm:mt-4 sm:h-[300px] sm:rounded-2xl sm:border sm:border-ink-200/70" />
 
       {/* Welcome ribbon */}
       <div className="mx-4 -mt-3 relative z-[600] flex items-center gap-2 rounded-xl bg-ink-900 px-4 py-2.5 text-sm text-white shadow-pop sm:mx-0 sm:mt-4">

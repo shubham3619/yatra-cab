@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { api } from '../api.js';
 import { getSocket } from '../socket.js';
+import { LiveMap } from '../components/LiveMap.jsx';
 
 export default function RideDetail() {
   const { id } = useParams();
@@ -38,7 +39,7 @@ export default function RideDetail() {
     socket.emit('ride:join', id);
     const onBid = () => qc.invalidateQueries({ queryKey: ['ride-bids', id] });
     const onUpdate = () => { qc.invalidateQueries({ queryKey: ['ride', id] }); qc.invalidateQueries({ queryKey: ['ride-bids', id] }); };
-    const onLoc = (p) => p.rideId === id && setDriverLoc({ lat: p.lat, lng: p.lng });
+    const onLoc = (p) => p.rideId === id && setDriverLoc({ lat: p.lat, lng: p.lng, heading: p.heading, at: p.at });
     socket.on('ride:bid_new', onBid);
     socket.on('ride:updated', onUpdate);
     socket.on('ride:started', onUpdate);
@@ -437,21 +438,31 @@ function ActivePanel({ ride, driverLoc, onChange }) {
       <CardBody className="space-y-4">
         <DriverCard ride={ride} />
 
-        {/* Live location panel (map placeholder — no external map key needed) */}
-        <div className="relative overflow-hidden rounded-xl border border-accent/20 bg-accent-soft p-5">
-          <div className="absolute inset-0 bg-dotted opacity-60" />
-          <div className="relative flex items-center gap-3">
-            <span className="relative flex h-3 w-3">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" />
-              <span className="relative inline-flex h-3 w-3 rounded-full bg-accent" />
+        {/* Live tracking: the driver's car on the map, moving as their phone
+            reports in. Falls back to a status line until the first fix. */}
+        <div className="overflow-hidden rounded-xl border border-ink-200">
+          <LiveMap
+            position={loc ? { lat: loc.lat, lng: loc.lng } : ride.pickup}
+            cars={loc ? [{ id: 'driver', lat: loc.lat, lng: loc.lng, heading: loc.heading, active: true }] : []}
+            focusCar={loc}
+            className="h-56 w-full"
+          />
+          <div className="flex items-center gap-3 bg-white px-4 py-3">
+            <span className="relative flex h-3 w-3 shrink-0">
+              {loc && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60" />}
+              <span className={`relative inline-flex h-3 w-3 rounded-full ${loc ? 'bg-accent' : 'bg-ink-300'}`} />
             </span>
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-medium text-ink-800">
-                {ride.status === 'ongoing' ? 'Live tracking active' : 'Driver will share location when the trip starts'}
+                {loc
+                  ? 'Live tracking active'
+                  : ride.status === 'ongoing'
+                    ? 'Waiting for your driver’s GPS…'
+                    : 'Your driver will appear here when the trip starts'}
               </p>
-              <p className="text-xs text-ink-500">
-                {loc ? `Last seen: ${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}` : 'Awaiting GPS…'}
-              </p>
+              {loc?.at && (
+                <p className="text-xs text-ink-500">Updated {Math.max(0, Math.round((Date.now() - loc.at) / 1000))}s ago</p>
+              )}
             </div>
           </div>
         </div>

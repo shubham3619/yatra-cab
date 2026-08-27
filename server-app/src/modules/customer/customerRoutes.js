@@ -30,6 +30,7 @@ import {
   updateProfile,
 } from './customerController.js';
 import { browseDailyRoutes, bookDailyRoute } from './discoverController.js';
+import { nearbyDrivers } from './liveController.js';
 import { raiseSos, createShare } from './safetyController.js';
 import { myReferral, myReferralEarnings } from './referralController.js';
 import { listContacts, saveContacts, deleteContact, purgeContacts } from './contactsController.js';
@@ -54,6 +55,7 @@ router.post('/rides/:id/call', callDriver);
 router.patch('/profile', validate(profileSchema), updateProfile);
 
 // Daily-route discovery + seat/full-cab booking (GPS priority sorted)
+router.get('/drivers/nearby', nearbyDrivers);
 router.get('/daily-routes', browseDailyRoutes);
 router.post('/daily-routes/:id/book', validate(seatBookSchema), bookDailyRoute);
 

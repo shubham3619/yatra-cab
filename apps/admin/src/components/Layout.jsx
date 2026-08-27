@@ -3,12 +3,12 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth, Logo, Avatar, IconButton } from '@yatracab/ui';
 import {
   ShieldCheck, LayoutDashboard, BadgeCheck, Car, Users, ClipboardList,
-  Route as RouteIcon, BarChart3, ShieldAlert, Wallet, LogOut, Menu, X,
-} from 'lucide-react';
+  Route as RouteIcon, BarChart3, ShieldAlert, Wallet, LogOut, Menu, X, Radio } from 'lucide-react';
 
 const NAV = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/verification', label: 'Verification', icon: BadgeCheck },
+  { to: '/live', label: 'Live map', icon: Radio },
   { to: '/drivers', label: 'Drivers', icon: Car },
   { to: '/customers', label: 'Customers', icon: Users },
   { to: '/bookings', label: 'Bookings', icon: ClipboardList },

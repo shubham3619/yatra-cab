@@ -18,14 +18,33 @@ const pinIcon = L.divIcon({
   iconAnchor: [17, 34],
 });
 
+// Car marker. divIcon again (no bundler icon paths), and the heading rotates
+// the glyph so a moving car visibly points where it is going.
+const carIcon = (heading = 0, active = false) =>
+  L.divIcon({
+    className: '',
+    html: `<div style="width:30px;height:30px;transform:rotate(${heading}deg);transition:transform .4s ease">
+      <div style="width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+        background:${active ? 'rgb(var(--yc-accent))' : '#1c1917'};
+        box-shadow:0 4px 12px -2px rgba(0,0,0,.45);border:2px solid #fff">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"
+             stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(-90deg)">
+          <path d="M5 17h14M6.5 17V9.5L9 6h6l2.5 3.5V17"/><circle cx="8" cy="17" r="1.6"/><circle cx="16" cy="17" r="1.6"/>
+        </svg>
+      </div></div>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+  });
+
 /**
  * Live OpenStreetMap panel. Centers on the user's GPS position (fallback:
  * Jaipur), drops an accent pin, and reports position changes upward.
  */
-export function LiveMap({ position, onLocate, className }) {
+export function LiveMap({ position, onLocate, className, cars = [], focusCar = null }) {
   const holderRef = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
+  const carsRef = useRef(new Map()); // id → Leaflet marker, reused across renders
   const [locating, setLocating] = useState(false);
 
   // Init once.
@@ -57,6 +76,42 @@ export function LiveMap({ position, onLocate, className }) {
     markerRef.current?.setLatLng(ll);
     mapRef.current.flyTo(ll, 15, { duration: 1.2 });
   }, [position?.lat, position?.lng]);
+
+  // Cars are diffed rather than cleared and redrawn: moving an existing marker
+  // animates, while removing and re-adding makes the whole fleet flicker.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const seen = new Set();
+
+    cars.forEach((c) => {
+      if (c?.lat == null || c?.lng == null) return;
+      const id = String(c.id);
+      seen.add(id);
+      const ll = [c.lat, c.lng];
+      const existing = carsRef.current.get(id);
+      if (existing) {
+        existing.setLatLng(ll);
+        existing.setIcon(carIcon(c.heading || 0, c.active));
+      } else {
+        const m = L.marker(ll, { icon: carIcon(c.heading || 0, c.active), zIndexOffset: c.active ? 1000 : 0 }).addTo(map);
+        carsRef.current.set(id, m);
+      }
+    });
+
+    // Drop cars that have gone offline or out of range.
+    carsRef.current.forEach((m, id) => {
+      if (seen.has(id)) return;
+      map.removeLayer(m);
+      carsRef.current.delete(id);
+    });
+  }, [cars]);
+
+  // Keep the tracked car in view during a trip.
+  useEffect(() => {
+    if (!mapRef.current || !focusCar?.lat) return;
+    mapRef.current.panTo([focusCar.lat, focusCar.lng], { animate: true, duration: 0.8 });
+  }, [focusCar?.lat, focusCar?.lng]);
 
   const locate = useCallback(() => {
     if (!navigator.geolocation) return;
