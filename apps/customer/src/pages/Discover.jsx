@@ -4,6 +4,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   Card, CardBody, Button, Badge, Modal, Field, Input, Avatar, StarRating, Segmented,
   QueryBoundary, EmptyState, toast, inr, vehicleLabel, LocationInput, VehicleIcon,
+  useTranslations,
 } from '@yatracab/ui';
 import {
   Compass, Navigation, MapPin, ArrowRight, Clock, ShieldCheck, Users2, Minus, Plus, Loader2, Search, X,
@@ -12,9 +13,9 @@ import { api } from '../api.js';
 import { PHOTOS } from '../lib/photos.js';
 
 const TYPE_OPTS = [
-  { value: 'all', label: 'All' },
-  { value: 'seat_share', label: 'Share seats' },
-  { value: 'full_cab', label: 'Full cab' },
+  { value: 'all', key: 'all' },
+  { value: 'seat_share', key: 'shareSeats' },
+  { value: 'full_cab', key: 'fullCab' },
 ];
 
 // Addresses come back as "Sindhi Camp, Station Road, Jaipur" — the city is the
@@ -31,6 +32,7 @@ const defaultWhen = () => {
 };
 
 export default function Discover() {
+  const t = useTranslations('Discover');
   const navigate = useNavigate();
   const [loc, setLoc] = useState(null); // { lat, lng } — drives nearby priority
   const [fromPlace, setFromPlace] = useState(null);
@@ -60,13 +62,13 @@ export default function Discover() {
   const searching = Boolean(fromPlace || toPlace);
 
   const nearMe = () => {
-    if (!navigator.geolocation) return toast.error('Location not supported on this device');
+    if (!navigator.geolocation) return toast.error(t('notSupported'));
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setLocating(false);
-        toast.success('Showing routes near you');
+        toast.success(t('showingNear'));
       },
       () => {
         setLocating(false);
@@ -80,11 +82,11 @@ export default function Discover() {
     <div className="space-y-5 animate-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold text-ink-900">Discover daily routes</h1>
-          <p className="text-sm text-ink-500">Drivers running your route today — book a seat or the whole cab.</p>
+          <h1 className="font-display text-2xl font-bold text-ink-900">{t('title')}</h1>
+          <p className="text-sm text-ink-500">{t('subtitle')}</p>
         </div>
         <Button variant={loc ? 'soft' : 'primary'} icon={locating ? Loader2 : Navigation} onClick={nearMe} loading={locating}>
-          {loc ? 'Near me ✓' : 'Near me'}
+          {loc ? t('nearMeOn') : t('nearMe')}
         </Button>
       </div>
 
@@ -93,31 +95,31 @@ export default function Discover() {
         <CardBody className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="flex items-center gap-1.5 text-sm font-semibold text-ink-900">
-              <Search size={15} /> Where are you going?
+              <Search size={15} /> {t('whereGoing')}
             </p>
             {searching && (
               <button type="button" onClick={clearSearch} className="flex items-center gap-1 text-xs font-medium text-ink-500 hover:text-ink-900">
-                <X size={13} /> Clear
+                <X size={13} /> {t('clear')}
               </button>
             )}
           </div>
           <div>
-            <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-ink-400">From</p>
+            <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-ink-400">{t('from')}</p>
             <LocationInput
               value={fromPlace}
               onChange={setFromPlace}
-              placeholder="Pickup city or area"
+              placeholder={t('fromPlaceholder')}
               allowCurrentLocation
               icon={Navigation}
               onError={toast.error}
             />
           </div>
           <div>
-            <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-ink-400">To</p>
-            <LocationInput value={toPlace} onChange={setToPlace} placeholder="Destination city" icon={MapPin} onError={toast.error} />
+            <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-ink-400">{t('to')}</p>
+            <LocationInput value={toPlace} onChange={setToPlace} placeholder={t('toPlaceholder')} icon={MapPin} onError={toast.error} />
           </div>
           <p className="text-xs text-ink-400">
-            Vehicles leaving from or passing near your pickup are shown first.
+            {t('priorityHint')}
           </p>
         </CardBody>
       </Card>
@@ -125,7 +127,7 @@ export default function Discover() {
       {/* Filters */}
       <Card>
         <CardBody className="flex flex-wrap items-center justify-between gap-3">
-          <Segmented value={type} onChange={setType} options={TYPE_OPTS} />
+          <Segmented value={type} onChange={setType} options={TYPE_OPTS.map((o) => ({ value: o.value, label: t(o.key) }))} />
           <button
             type="button"
             onClick={() => setWomenOnly((v) => !v)}
@@ -134,7 +136,7 @@ export default function Discover() {
             }`}
           >
             <img src={PHOTOS.womenOnly} alt="Two women travelling together" className="h-6 w-6 rounded-full border-2 border-white object-cover shadow-sm" />
-            <ShieldCheck size={15} /> Women only
+            <ShieldCheck size={15} /> {t('womenOnly')}
           </button>
         </CardBody>
       </Card>
@@ -145,11 +147,11 @@ export default function Discover() {
         empty={
           <EmptyState
             icon={Compass}
-            title={searching ? 'No vehicles on this route yet' : 'No daily routes near you yet'}
+            title={searching ? t('emptySearchTitle') : t('emptyTitle')}
             message={
               searching
-                ? 'Try a nearby city, widen your filters, or clear the search to see everything running today.'
-                : 'Try turning off filters, or check back soon — drivers publish routes daily.'
+                ? t('emptySearchText')
+                : t('emptyText')
             }
           />
         }
@@ -195,7 +197,7 @@ function RouteCard({ route, onBook }) {
               </p>
               {route.distanceFromYouKm != null && (
                 <p className="mt-0.5 flex items-center gap-1 text-xs font-medium text-ink-600">
-                  <Navigation size={11} /> {route.distanceFromYouKm} km from your pickup
+                  <Navigation size={11} /> {t('kmFromPickup', { km: route.distanceFromYouKm })}
                 </p>
               )}
             </div>

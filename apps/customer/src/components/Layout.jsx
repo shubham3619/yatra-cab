@@ -1,17 +1,18 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { useAuth, Logo, Avatar, IconButton } from '@yatracab/ui';
+import { useAuth, Logo, Avatar, IconButton, LanguageSwitcher, useTranslations } from '@yatracab/ui';
 import { Car, Home, ScrollText, User, LogOut, Compass, Gift } from 'lucide-react';
 
 const NAV = [
-  { to: '/', label: 'Home', icon: Home, end: true, mobile: true },
-  { to: '/book', label: 'Book', icon: Car, mobile: false },
-  { to: '/discover', label: 'Discover', icon: Compass, mobile: true },
-  { to: '/rides', label: 'My Rides', icon: ScrollText, mobile: true },
-  { to: '/rewards', label: 'Rewards', icon: Gift, mobile: true },
-  { to: '/profile', label: 'Profile', icon: User, mobile: true },
+  { to: '/', key: 'home', icon: Home, end: true, mobile: true },
+  { to: '/book', key: 'book', icon: Car, mobile: false },
+  { to: '/discover', key: 'discover', icon: Compass, mobile: true },
+  { to: '/rides', key: 'myRides', icon: ScrollText, mobile: true },
+  { to: '/rewards', key: 'rewards', icon: Gift, mobile: true },
+  { to: '/profile', key: 'profile', icon: User, mobile: true },
 ];
 
 export default function Layout() {
+  const t = useTranslations('Nav');
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -32,7 +33,8 @@ export default function Layout() {
               <p className="text-xs text-ink-400">{user?.phone}</p>
             </div>
             <Avatar name={user?.name || 'You'} size={38} />
-            <IconButton icon={LogOut} label="Log out" onClick={onLogout} />
+            <LanguageSwitcher compact className="mr-1 hidden sm:flex" />
+            <IconButton icon={LogOut} label={t('logout')} onClick={onLogout} />
           </div>
         </div>
       </header>
@@ -50,7 +52,7 @@ export default function Layout() {
               }`
             }
           >
-            <n.icon size={16} /> {n.label}
+            <n.icon size={16} /> {t(n.key)}
           </NavLink>
         ))}
       </nav>
@@ -73,7 +75,7 @@ export default function Layout() {
                 }`
               }
             >
-              <n.icon size={20} /> {n.label}
+              <n.icon size={20} /> {t(n.key)}
             </NavLink>
           ))}
         </div>

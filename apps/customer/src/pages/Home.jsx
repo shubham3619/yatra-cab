@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { useAuth, Badge, toast } from '@yatracab/ui';
+import { useAuth, Badge, toast, useTranslations } from '@yatracab/ui';
 import {
   MapPin, Navigation, ArrowRight, Repeat, Users2, Gavel, Gift, Sparkles, ChevronRight, Car, Route as RouteIcon,
 } from 'lucide-react';
@@ -21,6 +21,7 @@ async function reverseGeocode(lat, lng) {
 }
 
 export default function Home() {
+  const t = useTranslations('Home');
   const { user } = useAuth();
   const [position, setPosition] = useState(null);
   const [address, setAddress] = useState('');
@@ -59,13 +60,13 @@ export default function Home() {
           <MapPin size={17} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-ink-400">Your location</p>
+          <p className="text-[11px] font-medium uppercase tracking-wide text-ink-400">{t('yourLocation')}</p>
           <p className="truncate text-sm font-semibold text-ink-900">
-            {address || (position ? 'Locating…' : 'Enable location to auto-detect')}
+            {address || (position ? t('locating') : t('enableLocation'))}
           </p>
         </div>
         <Link to="/book" className="flex items-center gap-1 rounded-full bg-brand-gradient px-3.5 py-2 text-xs font-semibold text-accent-fg shadow-glow transition-transform hover:scale-105">
-          Book <ArrowRight size={13} />
+          {t('bookCta')} <ArrowRight size={13} />
         </Link>
       </div>
 
@@ -75,7 +76,7 @@ export default function Home() {
       {/* Welcome ribbon */}
       <div className="mx-4 -mt-3 relative z-[600] flex items-center gap-2 rounded-xl bg-ink-900 px-4 py-2.5 text-sm text-white shadow-pop sm:mx-0 sm:mt-4">
         <Sparkles size={15} className="shrink-0 text-amber-300" />
-        <span className="truncate">Namaste{user?.name ? `, ${user.name.split(' ')[0]}` : ''} — where to today?</span>
+        <span className="truncate">{t('greeting', { name: user?.name ? `, ${user.name.split(' ')[0]}` : '' })}</span>
       </div>
 
       {/* Service tiles */}
@@ -84,17 +85,17 @@ export default function Home() {
           <ServiceTile
             to="/book?trip=one_way"
             icon={Navigation}
-            title="One-Way"
-            text="One side journey (drop-off)"
+            title={t('oneWay')}
+            text={t('oneWayText')}
             art={OneWayRoad}
           />
           <ServiceTile
             to="/book?trip=round_trip"
             icon={Repeat}
-            title="Round Trip"
-            text="Outstation & return"
+            title={t('roundTrip')}
+            text={t('roundTripText')}
             art={RoundTripRoad}
-            sub={routesQ.data ? `${routesQ.data.length} popular routes` : null}
+            sub={routesQ.data ? t('popularRoutes', { count: routesQ.data.length }) : null}
           />
         </div>
 
@@ -102,10 +103,10 @@ export default function Home() {
         <WideTile
           to="/discover"
           icon={Users2}
-          title="Share a Seat"
-          text="Per-seat carpooling on daily routes — pay only for your seat."
-          badge={seatRides != null ? `${seatRides} rides running` : null}
-          cta="Find a seat"
+          title={t('shareSeat')}
+          text={t('shareSeatText')}
+          badge={seatRides != null ? t('ridesRunning', { count: seatRides }) : null}
+          cta={t('findSeat')}
           photo={PHOTOS.seatShare}
           alt="Group of friends enjoying a drive together"
         />
@@ -114,9 +115,9 @@ export default function Home() {
         <WideTile
           to="/book?mode=bidding"
           icon={Gavel}
-          title="Your Budget For This Ride"
-          text="Tell us your budget and let verified drivers bid — you pick the best quote."
-          cta="Post alert"
+          title={t('yourBudget')}
+          text={t('yourBudgetText')}
+          cta={t('postAlert')}
           tone="dark"
           photo={PHOTOS.bidding}
           alt="Happy man giving a thumbs up"
@@ -130,7 +131,7 @@ export default function Home() {
           <ChainIllustration className="pointer-events-none absolute -right-1 top-1/2 h-[92%] w-2/5 -translate-y-1/2 opacity-95" />
           <div className="relative flex items-center gap-4 pr-28 sm:pr-36">
             <div className="min-w-0 flex-1">
-              <p className="font-display text-lg font-bold">Refer &amp; Kamao — chain rewards</p>
+              <p className="font-display text-lg font-bold">{t('referTitle')}</p>
               <p className="mt-0.5 text-sm text-white/85">
                 You refer a friend, they refer their friend — <span className="font-semibold text-white">their rides earn you a % too.</span> Lifetime, auto-credited.
               </p>
@@ -193,6 +194,7 @@ function ChainIllustration({ className }) {
 // Photo-backed square tile (RodBez style): image fills the card, dark
 // gradient keeps the text readable.
 function ServiceTile({ to, icon: Icon, title, text, photo, alt, sub, art: Art }) {
+  const t = useTranslations('Home');
   // Illustrated tiles sit on a light surface so the black road reads; photo
   // tiles keep the dark scrim treatment.
   if (Art) {
@@ -213,7 +215,7 @@ function ServiceTile({ to, icon: Icon, title, text, photo, alt, sub, art: Art })
           <p className="mt-0.5 text-xs text-ink-500">{text}</p>
           {sub && <p className="mt-0.5 text-[11px] font-medium text-ink-700">{sub}</p>}
           <span className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-ink-900">
-            Book now <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
+            {t('bookNow')} <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
           </span>
         </div>
       </Link>
@@ -244,6 +246,7 @@ function ServiceTile({ to, icon: Icon, title, text, photo, alt, sub, art: Art })
 
 // Wide tile with the photo filling the right edge.
 function WideTile({ to, icon: Icon, title, text, badge, cta, tone, photo, alt }) {
+  const t = useTranslations('Home');
   const dark = tone === 'dark';
   return (
     <Link

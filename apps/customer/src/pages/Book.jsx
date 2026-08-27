@@ -4,6 +4,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   Card, CardBody, Button, Field, Input, Textarea, Select, Segmented, LocationInput,
   EmptyState, toast,
+  useTranslations,
 } from '@yatracab/ui';
 import {
   MapPin, Navigation, Gavel, Info, Route as RouteIcon, ArrowDown, Clock,
@@ -20,6 +21,8 @@ const defaultWhen = () => {
 };
 
 export default function Book() {
+  const t = useTranslations('Book');
+  const tMap = useTranslations('MapPicker');
   const navigate = useNavigate();
   // Deep-link presets from the home tiles: /book?mode=bidding&trip=one_way&type=seat_share
   const [params] = useSearchParams();
@@ -83,7 +86,7 @@ export default function Book() {
       return mode === 'fixed' ? api.post('/customer/rides/fixed', payload) : api.post('/customer/rides/alert', payload);
     },
     onSuccess: (res) => {
-      toast.success(mode === 'fixed' ? 'Ride created — complete payment' : 'Ride Alert posted!');
+      toast.success(t('posted'));
       navigate(`/rides/${res.ride._id}`);
     },
     onError: (err) => toast.error(err.message),
@@ -91,8 +94,8 @@ export default function Book() {
 
   const submit = () => {
     if (!pickup?.address) return toast.error('Set your pickup location');
-    if (pickup?.lat == null) return toast.error('Pick your pickup from the list or use your location');
-    if (drop?.lat == null) return toast.error('Choose a drop location');
+    if (pickup?.lat == null) return toast.error(t('needPickup'));
+    if (drop?.lat == null) return toast.error(t('needDrop'));
     book.mutate();
   };
 
@@ -100,8 +103,8 @@ export default function Book() {
     <div className="space-y-5 animate-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold text-ink-900">Book a ride</h1>
-          <p className="text-sm text-ink-500">Tell us where and when — verified drivers send you their quotes.</p>
+          <h1 className="font-display text-2xl font-bold text-ink-900">{t('title')}</h1>
+          <p className="text-sm text-ink-500">{t('subtitle')}</p>
         </div>
 
       </div>
@@ -110,11 +113,11 @@ export default function Book() {
       <Card>
         <CardBody className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="flex items-center gap-1.5 text-sm font-medium text-ink-600"><Users2 size={15} className="text-accent" /> How do you want to travel?</p>
+            <p className="flex items-center gap-1.5 text-sm font-medium text-ink-600"><Users2 size={15} className="text-accent" /> {t('howTravel')}</p>
             <Segmented
               value={bookingType}
               onChange={setBookingType}
-              options={[{ value: 'full_cab', label: 'Full cab' }, { value: 'seat_share', label: 'Share seats' }]}
+              options={[{ value: 'full_cab', label: t('fullCab') }, { value: 'seat_share', label: t('shareSeats') }]}
             />
           </div>
 
@@ -154,11 +157,11 @@ export default function Book() {
           <div className="relative">
             <div className="space-y-2.5">
               <div>
-                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-400">Pickup</p>
+                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-400">{t('pickup')}</p>
                 <LocationInput
                   value={pickup}
                   onChange={setPickup}
-                  placeholder="Search pickup point"
+                  placeholder={t('pickupPlaceholder')}
                   allowCurrentLocation
                   icon={Navigation}
                   onOpenMap={() => setMapFor('pickup')}
@@ -169,11 +172,11 @@ export default function Book() {
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink-100 text-ink-400"><ArrowDown size={14} /></span>
               </div>
               <div>
-                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-400">Drop</p>
+                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-400">{t('drop')}</p>
                 <LocationInput
                   value={drop}
                   onChange={onDropChange}
-                  placeholder="Search destination"
+                  placeholder={t('dropPlaceholder')}
                   icon={MapPin}
                   refineNearby
                   onOpenMap={() => setMapFor('drop')}
@@ -208,44 +211,42 @@ export default function Book() {
             <div className="flex items-start gap-2.5 rounded-xl bg-accent-soft p-4 text-sm text-ink-700">
               <Gavel size={16} className="mt-0.5 shrink-0 text-accent" />
               <p>
-                <span className="font-semibold text-ink-900">Drivers will quote for this trip.</span> Your request goes
-                to every available driver right away. You'll see each one's vehicle, seats, rating and price — pick
-                whichever suits you.
+                <span className="font-semibold text-ink-900">{t('quoteExplainerLead')}</span> {t('quoteExplainer').replace(t('quoteExplainerLead'), '').trim()}
               </p>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Trip type">
+              <Field label={t('tripType')}>
                 <Select value={tripType} onChange={(e) => setTripType(e.target.value)}>
-                  <option value="round_trip">Round trip</option>
-                  <option value="one_way">One way</option>
+                  <option value="round_trip">{t('roundTrip')}</option>
+                  <option value="one_way">{t('oneWay')}</option>
                 </Select>
               </Field>
-              <Field label="When">
+              <Field label={t('when')}>
                 <Input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} />
               </Field>
-              <Field label="Passengers">
+              <Field label={t('passengers')}>
                 <Input type="number" min={1} max={12} value={passengers} onChange={(e) => setPassengers(e.target.value)} />
               </Field>
               {mode === 'bidding' && (
-                <Field label="Quote window" hint="how long drivers can bid">
+                <Field label={t('quoteWindow')} hint={t('quoteWindowHint')}>
                   <Select value={biddingWindowMins} onChange={(e) => setBiddingWindowMins(e.target.value)}>
-                    <option value={15}>15 minutes</option>
-                    <option value={30}>30 minutes</option>
-                    <option value={60}>1 hour</option>
-                    <option value={180}>3 hours</option>
-                    <option value={360}>6 hours</option>
-                    <option value={720}>12 hours</option>
+                    <option value={15}>{t('minutes15')}</option>
+                    <option value={30}>{t('minutes30')}</option>
+                    <option value={60}>{t('hours1')}</option>
+                    <option value={180}>{t('hours3')}</option>
+                    <option value={360}>{t('hours6')}</option>
+                    <option value={720}>{t('hours12')}</option>
                   </Select>
                 </Field>
               )}
             </div>
 
-            <Field label="Notes" hint="optional">
-              <Textarea placeholder="Extra stops, luggage, wheelchair access…" value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <Field label={t('notes')} hint={t('optional')}>
+              <Textarea placeholder={t('notesPlaceholder')} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </Field>
 
-            {/* Arriving by train/flight? (collapsible) */}
+            {/* {t('transportTitle')} (collapsible) */}
             <div className="rounded-xl border border-ink-200">
               <button
                 type="button"
@@ -283,17 +284,17 @@ export default function Book() {
 
             {/* Deliberately no fare here — price comes from the drivers' quotes. */}
             <div className="rounded-xl bg-ink-50 p-4 text-sm text-ink-600">
-              <p className="flex items-center gap-1.5 font-medium text-ink-900"><Info size={15} /> What happens next</p>
+              <p className="flex items-center gap-1.5 font-medium text-ink-900"><Info size={15} /> {t('whatNext')}</p>
               <ol className="mt-2 space-y-1 pl-4 text-ink-600 [&>li]:list-decimal">
-                <li>Your trip reaches every available driver instantly.</li>
-                <li>They send blind quotes — no one can see anyone else's price.</li>
-                <li>You compare vehicle, rating and price, then accept the one you like.</li>
+                <li>{t('step1')}</li>
+                <li>{t('step2')}</li>
+                <li>{t('step3')}</li>
               </ol>
-              <p className="mt-2 text-xs text-ink-500">Nothing is charged until you accept a quote.</p>
+              <p className="mt-2 text-xs text-ink-500">{t('nothingCharged')}</p>
             </div>
 
             <Button className="w-full" size="lg" loading={book.isPending} icon={Gavel} onClick={submit}>
-              Get driver quotes
+              {t('submit')}
             </Button>
           </CardBody>
         </Card>
@@ -302,13 +303,14 @@ export default function Book() {
       <MapPicker
         open={mapFor !== null}
         value={mapFor === 'pickup' ? pickup : drop}
-        title={mapFor === 'pickup' ? 'Adjust pickup point' : 'Adjust drop point'}
+        title={mapFor === 'pickup' ? tMap('adjustPickup') : tMap('adjustDrop')}
+        
         onClose={() => setMapFor(null)}
         onConfirm={(loc) => (mapFor === 'pickup' ? setPickup(loc) : onDropChange(loc))}
       />
 
       {!hasTrip && (
-        <EmptyState icon={MapPin} title="Where to?" message="Set your pickup and drop above to request quotes from drivers." />
+        <EmptyState icon={MapPin} title={t('emptyTitle')} message={t('emptyText')} />
       )}
     </div>
   );
