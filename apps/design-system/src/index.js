@@ -14,6 +14,7 @@ export { Modal } from './components/Modal.jsx';
 export { Avatar, StarRating, StarPicker, PageHeader, Segmented, Logo } from './components/Misc.jsx';
 export { AuthScreen } from './components/AuthScreen.jsx';
 export { LocationInput } from './components/LocationInput.jsx';
+export { VehicleIcon, VEHICLE_META } from './components/VehicleIcon.jsx';
 
 // Re-export toast so apps import from one place.
 export { default as toast, Toaster } from 'react-hot-toast';

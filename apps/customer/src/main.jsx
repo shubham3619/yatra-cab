@@ -7,6 +7,11 @@ import { api } from './api.js';
 import App from './App.jsx';
 import './index.css';
 
+// A referral share link (/?ref=CODE) is captured before the router redirects
+// to /login and drops the query string. AuthScreen reads it back from here.
+const ref = new URLSearchParams(window.location.search).get('ref');
+if (ref) sessionStorage.setItem('yc_ref', ref.toUpperCase());
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false, staleTime: 15000 } },
 });

@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   Card, CardBody, Button, Badge, Modal, Field, Input, Avatar, StarRating, Segmented,
-  QueryBoundary, EmptyState, toast, inr, vehicleLabel,
+  QueryBoundary, EmptyState, toast, inr, vehicleLabel, LocationInput, VehicleIcon,
 } from '@yatracab/ui';
 import {
-  Compass, Navigation, MapPin, ArrowRight, Clock, ShieldCheck, Users2, Minus, Plus, Loader2,
+  Compass, Navigation, MapPin, ArrowRight, Clock, ShieldCheck, Users2, Minus, Plus, Loader2, Search, X,
 } from 'lucide-react';
 import { api } from '../api.js';
 import { PHOTOS } from '../lib/photos.js';
@@ -17,6 +17,13 @@ const TYPE_OPTS = [
   { value: 'full_cab', label: 'Full cab' },
 ];
 
+// Addresses come back as "Sindhi Camp, Station Road, Jaipur" — the city is the
+// part that actually matches a driver's published route, so search on that.
+const cityOf = (address = '') => {
+  const parts = address.split(',').map((p) => p.trim()).filter(Boolean);
+  return parts[parts.length - 1] || address;
+};
+
 const defaultWhen = () => {
   const d = new Date(Date.now() + 12 * 3600 * 1000);
   d.setMinutes(0, 0, 0);
@@ -25,23 +32,32 @@ const defaultWhen = () => {
 
 export default function Discover() {
   const navigate = useNavigate();
-  const [loc, setLoc] = useState(null); // { lat, lng }
+  const [loc, setLoc] = useState(null); // { lat, lng } — drives nearby priority
+  const [fromPlace, setFromPlace] = useState(null);
+  const [toPlace, setToPlace] = useState(null);
   const [locating, setLocating] = useState(false);
   const [type, setType] = useState('all');
   const [womenOnly, setWomenOnly] = useState(false);
   const [booking, setBooking] = useState(null); // route being booked
 
   const query = useQuery({
-    queryKey: ['daily-routes', loc?.lat, loc?.lng, type, womenOnly],
+    queryKey: ['daily-routes', loc?.lat, loc?.lng, type, womenOnly, fromPlace?.address, toPlace?.address],
     queryFn: () => {
       const params = new URLSearchParams();
-      if (loc?.lat != null) { params.set('lat', loc.lat); params.set('lng', loc.lng); }
+      // A searched pickup takes priority over raw GPS for nearby sorting.
+      const origin = fromPlace?.lat != null ? fromPlace : loc;
+      if (origin?.lat != null) { params.set('lat', origin.lat); params.set('lng', origin.lng); }
+      if (fromPlace?.address) params.set('from', cityOf(fromPlace.address));
+      if (toPlace?.address) params.set('to', cityOf(toPlace.address));
       if (type !== 'all') params.set('type', type);
       if (womenOnly) params.set('womenOnly', 'true');
       const qs = params.toString();
       return api.get(`/customer/daily-routes${qs ? `?${qs}` : ''}`).then((r) => r.routes);
     },
   });
+
+  const clearSearch = () => { setFromPlace(null); setToPlace(null); };
+  const searching = Boolean(fromPlace || toPlace);
 
   const nearMe = () => {
     if (!navigator.geolocation) return toast.error('Location not supported on this device');
@@ -72,6 +88,40 @@ export default function Discover() {
         </Button>
       </div>
 
+      {/* From → to search */}
+      <Card>
+        <CardBody className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="flex items-center gap-1.5 text-sm font-semibold text-ink-900">
+              <Search size={15} /> Where are you going?
+            </p>
+            {searching && (
+              <button type="button" onClick={clearSearch} className="flex items-center gap-1 text-xs font-medium text-ink-500 hover:text-ink-900">
+                <X size={13} /> Clear
+              </button>
+            )}
+          </div>
+          <div>
+            <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-ink-400">From</p>
+            <LocationInput
+              value={fromPlace}
+              onChange={setFromPlace}
+              placeholder="Pickup city or area"
+              allowCurrentLocation
+              icon={Navigation}
+              onError={toast.error}
+            />
+          </div>
+          <div>
+            <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-ink-400">To</p>
+            <LocationInput value={toPlace} onChange={setToPlace} placeholder="Destination city" icon={MapPin} onError={toast.error} />
+          </div>
+          <p className="text-xs text-ink-400">
+            Vehicles leaving from or passing near your pickup are shown first.
+          </p>
+        </CardBody>
+      </Card>
+
       {/* Filters */}
       <Card>
         <CardBody className="flex flex-wrap items-center justify-between gap-3">
@@ -92,7 +142,17 @@ export default function Discover() {
       <QueryBoundary
         query={query}
         isEmpty={(d) => !d.length}
-        empty={<EmptyState icon={Compass} title="No daily routes near you yet" message="Try turning off filters, or check back soon — drivers publish routes daily." />}
+        empty={
+          <EmptyState
+            icon={Compass}
+            title={searching ? 'No vehicles on this route yet' : 'No daily routes near you yet'}
+            message={
+              searching
+                ? 'Try a nearby city, widen your filters, or clear the search to see everything running today.'
+                : 'Try turning off filters, or check back soon — drivers publish routes daily.'
+            }
+          />
+        }
       >
         {(routes) => (
           <div className="space-y-3">
@@ -128,9 +188,16 @@ function RouteCard({ route, onBook }) {
               </div>
               <p className="flex items-center gap-2 text-xs text-ink-500">
                 <StarRating value={driver.rating || 5} size={11} />
-                <span>· {vehicleLabel(route.vehicleType)}</span>
+                <span className="inline-flex items-center gap-1">
+                  · <VehicleIcon type={route.vehicleType} size={13} /> {vehicleLabel(route.vehicleType)}
+                </span>
                 {driver.completedRides != null && <span>· {driver.completedRides} rides</span>}
               </p>
+              {route.distanceFromYouKm != null && (
+                <p className="mt-0.5 flex items-center gap-1 text-xs font-medium text-ink-600">
+                  <Navigation size={11} /> {route.distanceFromYouKm} km from your pickup
+                </p>
+              )}
             </div>
           </div>
           <div className="text-right">

@@ -1,6 +1,8 @@
 import { User } from '../models/User.js';
 import { Driver } from '../models/Driver.js';
 import { Referral } from '../models/Referral.js';
+import { ReferralEarning } from '../models/ReferralEarning.js';
+import { Ride, RIDE_STATUS } from '../models/Ride.js';
 import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 import { credit as walletCredit } from './walletService.js';
@@ -115,4 +117,152 @@ export async function payDriverRecurringCommission(driver, platformCommission, r
 export function pointsToDiscount(points, maxDiscount) {
   const value = Math.floor(points * env.business.pointValue);
   return Math.max(0, Math.min(value, maxDiscount));
+}
+
+
+// ── Customer (rider) multi-level referral commission engine ─────────────────
+//
+// Every payout is a slice of a FIXED pool (a % of the ride's platform
+// commission) — never an independent % of the fare. The cost per ride is
+// therefore capped no matter how deep or wide the referral tree grows.
+//
+// Level weights decay faster than a realistic branching factor (k≈3), i.e.
+// each weight is under 1/3 of the one above it, so a level's TOTAL payout
+// shrinks as you go deeper. That keeps riding — not recruiting — the way to
+// earn, which is the line between a referral programme and a pyramid.
+const CUSTOMER_LEVEL_WEIGHTS = [75, 19, 6]; // L1, L2, L3 — % of the chain pool
+
+const monthStart = () => {
+  const d = new Date();
+  d.setDate(1);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+/** An upline only earns while they are themselves an active rider. */
+async function hasRiddenRecently(userId, days) {
+  const since = new Date(Date.now() - days * 24 * 3600 * 1000);
+  return Ride.exists({ customer: userId, status: RIDE_STATUS.COMPLETED, completedAt: { $gte: since } });
+}
+
+/** Chain points already earned this calendar month (level 0 cashback is exempt). */
+async function chainPointsThisMonth(userId) {
+  const [row] = await ReferralEarning.aggregate([
+    { $match: { beneficiary: userId, level: { $gt: 0 }, createdAt: { $gte: monthStart() } } },
+    { $group: { _id: null, total: { $sum: '$points' } } },
+  ]);
+  return row?.total || 0;
+}
+
+/**
+ * Pay the rider's own-ride cashback plus their upline chain when a ride
+ * completes. Idempotent per ride.
+ *
+ * Unclaimed levels (no upline, inactive upline, capped upline, or a closed
+ * earning window) roll into the rider's own cashback rather than evaporating —
+ * so early users, who have no chain above them, still feel the full pool.
+ *
+ * @returns {{pool:number, cashback:number, payouts:Array}|null}
+ */
+export async function payCustomerRideCommission(ride) {
+  if (!ride?.customer) return null;
+
+  const commission = ride.commission?.amount || ride.feeAmount || 0;
+  if (commission <= 0) return null;
+
+  // Idempotency: a ride is only ever paid out once.
+  if (await ReferralEarning.exists({ ride: ride._id })) return null;
+
+  const {
+    customerReferralPercent,
+    customerCashbackPercent,
+    customerReferralWindowRides,
+    customerReferralActiveDays,
+    customerReferralMonthlyCap,
+  } = env.business;
+
+  const pool = Math.round((commission * customerReferralPercent) / 100);
+  const payouts = [];
+  let chainSpent = 0;
+
+  // The earning window is per RIDER: the chain above them is paid only during
+  // their first N completed rides, which caps referral cost per acquired user.
+  const riderReferral = await Referral.findOne({ referred: ride.customer, role: 'customer' });
+  const windowOpen = !riderReferral || riderReferral.ridesCounted < customerReferralWindowRides;
+
+  if (pool > 0 && windowOpen) {
+    const seen = new Set([String(ride.customer)]);
+    let currentId = (await User.findById(ride.customer).select('referredBy'))?.referredBy;
+
+    for (let i = 0; i < CUSTOMER_LEVEL_WEIGHTS.length; i += 1) {
+      if (!currentId || seen.has(String(currentId))) break; // end of chain, or a cycle
+      seen.add(String(currentId));
+
+      // eslint-disable-next-line no-await-in-loop
+      const upline = await User.findById(currentId).select('referredBy role isBlocked');
+      if (!upline) break;
+
+      // Clamp to what's left: independent rounding of each weight can otherwise
+      // overshoot the pool by a rupee or two (e.g. pool 30 → 23+6+2 = 31).
+      const share = Math.min(Math.round((pool * CUSTOMER_LEVEL_WEIGHTS[i]) / 100), pool - chainSpent);
+      // eslint-disable-next-line no-await-in-loop
+      const eligible =
+        share > 0 &&
+        !upline.isBlocked &&
+        upline.role === 'customer' &&
+        (await hasRiddenRecently(upline._id, customerReferralActiveDays));
+
+      if (eligible) {
+        // eslint-disable-next-line no-await-in-loop
+        const earnedThisMonth = await chainPointsThisMonth(upline._id);
+        const award = Math.min(share, Math.max(0, customerReferralMonthlyCap - earnedThisMonth));
+        if (award > 0) {
+          // eslint-disable-next-line no-await-in-loop
+          await ReferralEarning.create({
+            ride: ride._id,
+            beneficiary: upline._id,
+            source: ride.customer,
+            level: i + 1,
+            points: award,
+            commissionBase: commission,
+          });
+          // eslint-disable-next-line no-await-in-loop
+          await User.updateOne({ _id: upline._id }, { $inc: { points: award } });
+          payouts.push({ user: upline._id, level: i + 1, points: award });
+          chainSpent += award;
+        }
+      }
+
+      currentId = upline.referredBy;
+    }
+  }
+
+  // Pool conservation: whatever the chain did not take — an absent, inactive,
+  // blocked or capped upline, a closed window, or a short chain — returns to
+  // the rider. Nothing evaporates, and the pool is never exceeded.
+  const cashback = Math.round((commission * customerCashbackPercent) / 100) + (pool - chainSpent);
+
+  if (cashback > 0) {
+    await ReferralEarning.create({
+      ride: ride._id,
+      beneficiary: ride.customer,
+      source: ride.customer,
+      level: 0,
+      points: cashback,
+      commissionBase: commission,
+    });
+    await User.updateOne({ _id: ride.customer }, { $inc: { points: cashback } });
+  }
+
+  if (riderReferral) {
+    riderReferral.ridesCounted += 1;
+    riderReferral.recurringEarnings += chainSpent;
+    await riderReferral.save();
+  }
+
+  logger.info(
+    `[referral] ride ${ride._id} (commission ₹${commission}): rider +${cashback} pts, ` +
+      `chain ${payouts.map((p) => `L${p.level}:${p.points}`).join(' ') || 'none'}`
+  );
+  return { pool, cashback, chainSpent, payouts };
 }

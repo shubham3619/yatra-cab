@@ -4,7 +4,7 @@ import {
   Card, CardBody, Button, Badge, Modal, Field, Input, Textarea, PageHeader,
   QueryBoundary, LoadingScreen, EmptyState, toast, inr, formatDateTime, timeUntil, vehicleLabel,
 } from '@yatracab/ui';
-import { Gavel, MapPin, Users, CalendarClock, TrendingDown, Info } from 'lucide-react';
+import { Gavel, MapPin, Users, CalendarClock, TrendingDown, Info, CarFront } from 'lucide-react';
 import { api } from '../api.js';
 
 export default function Alerts() {
@@ -15,7 +15,7 @@ export default function Alerts() {
 
   const query = useQuery({
     queryKey: ['driver-alerts'],
-    queryFn: () => api.get('/driver/alerts').then((r) => r.alerts),
+    queryFn: () => api.get('/driver/alerts'),
     refetchInterval: 8000,
   });
 
@@ -49,12 +49,27 @@ export default function Alerts() {
       <QueryBoundary
         query={query}
         loading={<LoadingScreen label="Finding open alerts…" />}
-        isEmpty={(d) => !d?.length}
+        isEmpty={(d) => !d?.blocked && !d?.alerts?.length}
         empty={<EmptyState icon={Gavel} title="No open alerts right now" message="You'll see trips here for the routes and vehicle type you serve. Make sure you're online." />}
       >
-        {(alerts) => (
+        {(data) => (data.blocked ? (
+          <Card>
+            <CardBody className="flex items-start gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
+                <CarFront size={20} />
+              </span>
+              <div>
+                <p className="font-semibold text-ink-900">You're on a trip</p>
+                <p className="mt-0.5 text-sm text-ink-500">
+                  New ride alerts are hidden until you complete your current ride
+                  {data.activeRide?.drop?.address ? ` to ${data.activeRide.drop.address}` : ''}. Finish it to start bidding again.
+                </p>
+              </div>
+            </CardBody>
+          </Card>
+        ) : (
           <div className="space-y-3">
-            {alerts.map((a) => (
+            {data.alerts.map((a) => (
               <Card key={a._id}>
                 <CardBody className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
@@ -79,7 +94,7 @@ export default function Alerts() {
               </Card>
             ))}
           </div>
-        )}
+        ))}
       </QueryBoundary>
 
       <Modal

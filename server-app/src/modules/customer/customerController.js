@@ -37,6 +37,9 @@ import {
   shapeBidForCustomer,
 } from '../shared/rideHelpers.js';
 
+// Six-digit code for the three ride verification checkpoints.
+const otp6 = () => String(Math.floor(100000 + Math.random() * 900000));
+
 const ownRide = async (rideId, customerId) => {
   const ride = await Ride.findOne({ _id: rideId, customer: customerId });
   if (!ride) throw ApiError.notFound('Ride not found');
@@ -199,7 +202,9 @@ export const postAlert = catchAsync(async (req, res) => {
   } else {
     if (!drop) throw ApiError.badRequest('Choose a drop location');
     if (pickup?.lat == null || pickup?.lng == null) throw ApiError.badRequest('Pickup coordinates required');
-    const q = quoteByDistance({ pickup, drop, vehicleType, tripType });
+    // With no vehicle preference, price the floor off a sedan as the reference
+    // class — bids above and below it are what set the real market.
+    const q = quoteByDistance({ pickup, drop, vehicleType: vehicleType || 'sedan', tripType });
     dropLabel = drop.address;
     dropLocation = drop;
     distanceKm = q.distanceKm;
@@ -217,7 +222,7 @@ export const postAlert = catchAsync(async (req, res) => {
     bookingType: bookingType || 'full_cab',
     seatsTotal: isShare ? seats : 1,
     womenOnly: !!womenOnly,
-    vehicleType,
+    vehicleType: vehicleType || 'any',
     tripType,
     transport: t.transport,
     scheduledAt: t.scheduledAt,
@@ -239,7 +244,7 @@ export const postAlert = catchAsync(async (req, res) => {
     rideId: String(ride._id),
     destination: dropLabel,
     pickup: pickup?.address,
-    vehicleType,
+    vehicleType: vehicleType || 'any',
     distanceKm,
     scheduledAt,
     floorPrice,
@@ -324,6 +329,9 @@ export const acceptBid = catchAsync(async (req, res) => {
   ride.totalAmount = bid.amount;
   ride.acceptedBid = bid._id;
   ride.driver = bid.driver;
+  // The rider chose this driver's cab, so the ride now carries that vehicle.
+  const winner = await Driver.findById(bid.driver).select('vehicle');
+  if (winner?.vehicle?.type) ride.vehicleType = winner.vehicle.type;
   ride.commission = { percent: commission.percent, amount: commission.amount, status: 'pending' };
 
   // Charge the driver's wallet now; success unlocks the contact + OTP.
@@ -334,6 +342,11 @@ export const acceptBid = catchAsync(async (req, res) => {
     ride.connectOtp = String(Math.floor(1000 + Math.random() * 9000));
   }
   ride.status = RIDE_STATUS.CONFIRMED;
+  // Checkpoints 2 and 3 — issued now, held by the rider only.
+  ride.verification = ride.verification || {};
+  if (ride.verification.payment) ride.verification.payment.verifiedAt = new Date();
+  ride.verification.start = { code: otp6() };
+  ride.verification.end = { code: otp6() };
   await ride.save();
 
   bid.status = 'accepted';
@@ -390,17 +403,32 @@ export const createPaymentOrder = catchAsync(async (req, res) => {
     { upsert: true, new: true }
   );
   ride.payment = payment._id;
+  // Checkpoint 1 — the rider confirms the amount before money moves.
+  ride.verification = ride.verification || {};
+  ride.verification.payment = { code: otp6() };
   await ride.save();
 
-  return ok(res, { order, feeAmount: payable, discount, pointsRedeemed: ride.pointsRedeemed });
+  return ok(res, {
+    order,
+    feeAmount: payable,
+    discount,
+    pointsRedeemed: ride.pointsRedeemed,
+    // Dev convenience: the code is delivered out-of-band in production.
+    devPaymentOtp: env.nodeEnv === 'production' ? undefined : ride.verification.payment.code,
+  });
 });
 
 // POST /customer/rides/:id/payment/verify
 export const verifyRidePayment = catchAsync(async (req, res) => {
-  const { orderId, paymentId, signature } = req.body;
+  const { orderId, paymentId, signature, otp } = req.body;
   const ride = await ownRide(req.params.id, req.user._id);
   const payment = await Payment.findOne({ ride: ride._id, orderId });
   if (!payment) throw ApiError.notFound('Payment order not found');
+
+  const expected = ride.verification?.payment?.code;
+  if (expected && String(otp || '') !== expected) {
+    throw ApiError.badRequest('Incorrect payment verification code');
+  }
 
   const valid = await gatewayVerify({ orderId, paymentId, signature });
   if (!valid) {
@@ -421,6 +449,11 @@ export const verifyRidePayment = catchAsync(async (req, res) => {
     if (driver) ride.driver = driver._id;
   }
   ride.status = RIDE_STATUS.CONFIRMED;
+  // Checkpoints 2 and 3 — issued once paid, held by the rider only.
+  ride.verification = ride.verification || {};
+  if (ride.verification.payment) ride.verification.payment.verifiedAt = new Date();
+  ride.verification.start = { code: otp6() };
+  ride.verification.end = { code: otp6() };
   await ride.save();
 
   if (ride.driver) {

@@ -2,10 +2,10 @@
    Each app defines its own --yc-accent* trio in its own index.css. */
 
 :root {
-  --yc-accent: 124 58 237; /* fallback: violet-600 */
-  --yc-accent-2: 217 70 239; /* fuchsia-500 */
+  --yc-accent: 194 65 12; /* fallback: terracotta */
+  --yc-accent-2: 234 154 16; /* marigold */
   --yc-accent-fg: 255 255 255;
-  --yc-accent-soft: 245 243 255;
+  --yc-accent-soft: 255 247 237;
 }
 
 html {
@@ -50,12 +50,12 @@ body {
   /* Frosted glass surface. */
   .glass {
     background: rgb(255 255 255 / 0.72);
-    backdrop-filter: blur(14px) saturate(160%);
-    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    backdrop-filter: blur(14px) saturate(150%);
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
   }
   /* Soft dotted map/texture backdrop. */
   .bg-dotted {
-    background-image: radial-gradient(circle at 1px 1px, rgb(15 23 42 / 0.06) 1px, transparent 0);
+    background-image: radial-gradient(circle at 1px 1px, rgb(28 25 23 / 0.07) 1px, transparent 0);
     background-size: 22px 22px;
   }
 }
