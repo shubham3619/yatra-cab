@@ -77,6 +77,7 @@ const rideSchema = new mongoose.Schema(
     feePercent: { type: Number, default: 10 },
     pointsRedeemed: { type: Number, default: 0 }, // cashback points applied
     discount: { type: Number, default: 0 },
+    coupon: { code: String, discount: Number },
 
     status: {
       type: String,

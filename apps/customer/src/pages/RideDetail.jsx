@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
+  Input,
   useAuth,
   Card, CardHeader, CardBody, Button, Badge, StatusBadge, Modal, Avatar, StarRating, StarPicker,
   Field, Textarea, QueryBoundary, LoadingScreen, EmptyState, toast,
@@ -9,7 +10,7 @@ import {
 } from '@yatracab/ui';
 import {
   ArrowLeft, MapPin, Car, CalendarClock, Users, Phone, IndianRupee, Gavel, Star,
-  ShieldCheck, Navigation, XCircle, CheckCircle2, Info, Loader2, Sparkles, ShieldAlert, Share2,
+  ShieldCheck, Navigation, XCircle, CheckCircle2, Info, Loader2, Sparkles, ShieldAlert, Share2, Ticket,
 } from 'lucide-react';
 import { api } from '../api.js';
 import { getSocket } from '../socket.js';
@@ -161,18 +162,47 @@ function PaymentPanel({ ride, optional = false, onDone }) {
   const [open, setOpen] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [usePoints, setUsePoints] = useState(false);
+  const [couponInput, setCouponInput] = useState('');
+  const [coupon, setCoupon] = useState(null); // { code, discount, description }
+  const [couponError, setCouponError] = useState('');
+  const [checking, setChecking] = useState(false);
   const [applied, setApplied] = useState(null); // { feeAmount, discount, pointsRedeemed }
 
   // Read the points balance from the referral endpoint (auth user may not carry it).
   const refQuery = useQuery({ queryKey: ['referral'], queryFn: () => api.get('/customer/referral') });
   const points = refQuery.data?.points ?? user?.points ?? 0;
 
+  // Checked before paying, so the rider sees the saving without the code being
+  // taken from stock — it is only claimed when they actually pay.
+  const applyCoupon = async () => {
+    const code = couponInput.toUpperCase().trim();
+    if (!code) return;
+    setChecking(true);
+    setCouponError('');
+    try {
+      const res = await api.post(`/customer/rides/${ride._id}/coupon/check`, { code });
+      if (res.valid) {
+        setCoupon({ code: res.code, discount: res.discount, description: res.description });
+        toast.success(`${res.code} applied — ${inr(res.discount)} off`);
+      } else {
+        setCoupon(null);
+        setCouponError(res.message || 'That code did not work');
+      }
+    } catch (err) {
+      setCouponError(err.message);
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const clearCoupon = () => { setCoupon(null); setCouponInput(''); setCouponError(''); };
+
   const pay = async () => {
     setProcessing(true);
     try {
       const { order, feeAmount, discount, pointsRedeemed, devPaymentOtp } = await api.post(
         `/customer/rides/${ride._id}/payment/order`,
-        { usePoints }
+        { usePoints, ...(coupon ? { couponCode: coupon.code } : {}) }
       );
       setApplied({ feeAmount, discount, pointsRedeemed });
 
@@ -226,8 +256,36 @@ function PaymentPanel({ ride, optional = false, onDone }) {
           <MoneyRow label="Ride fare" value={inr(ride.fareAmount)} hint="cash to driver" />
           <MoneyRow label={`Booking & Safety Fee (${ride.feePercent}%)`} value={inr(ride.feeAmount)} hint="online now" />
           <div className="my-1 border-t border-ink-200" />
-          <MoneyRow label="Pay online now" value={inr(ride.feeAmount)} bold />
+          {coupon && <MoneyRow label={`Coupon ${coupon.code}`} value={`− ${inr(coupon.discount)}`} />}
+          <MoneyRow label="Pay online now" value={inr(Math.max(0, ride.feeAmount - (coupon?.discount || 0)))} bold />
         </div>
+        {/* Coupon */}
+        <div className="mt-3">
+          {coupon ? (
+            <div className="flex items-center gap-2.5 rounded-xl border border-success/40 bg-success-soft p-3.5">
+              <Ticket size={16} className="shrink-0 text-success" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-ink-900">{coupon.code} applied</span>
+                <span className="block text-xs text-ink-600">{inr(coupon.discount)} off{coupon.description ? ` · ${coupon.description}` : ''}</span>
+              </span>
+              <button type="button" onClick={clearCoupon} className="shrink-0 text-xs font-medium text-ink-500 hover:text-ink-900">Remove</button>
+            </div>
+          ) : (
+            <div>
+              <div className="flex gap-2">
+                <Input
+                  value={couponInput}
+                  onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCouponError(''); }}
+                  placeholder="Coupon code"
+                  className="flex-1 tracking-widest"
+                />
+                <Button variant="soft" loading={checking} disabled={!couponInput.trim()} onClick={applyCoupon}>Apply</Button>
+              </div>
+              {couponError && <p className="mt-1.5 text-xs text-danger">{couponError}</p>}
+            </div>
+          )}
+        </div>
+
         {points > 0 && (
           <button
             type="button"
@@ -250,7 +308,7 @@ function PaymentPanel({ ride, optional = false, onDone }) {
           Free cancellation up to 6h before the ride (minus ₹50). Driver no-show = full refund.
         </p>
         <Button className="mt-4 w-full" size="lg" icon={IndianRupee} onClick={() => setOpen(true)}>
-          Pay {inr(ride.feeAmount)} advance
+          Pay {inr(Math.max(0, ride.feeAmount - (coupon?.discount || 0)))} advance
         </Button>
       </CardBody>
 

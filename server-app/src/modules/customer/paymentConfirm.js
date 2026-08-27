@@ -1,4 +1,5 @@
 import {
+  commitCoupon,
   Payment,
   Ride,
   Driver,
@@ -35,6 +36,10 @@ export async function confirmPaidRide({ payment, ride, paymentId, signature, ass
     logger.info(`[payment] ${payment.orderId} already confirmed — ignoring duplicate`);
     return { ride, alreadyConfirmed: true };
   }
+
+  // The held coupon becomes a real redemption exactly once, here, because both
+  // the browser callback and the gateway webhook funnel through this function.
+  await commitCoupon(ride._id);
 
   payment.status = 'paid';
   if (paymentId) payment.paymentId = paymentId;

@@ -16,6 +16,9 @@ import {
   debit as walletDebit,
   fetchArrivalDelay,
   pointsToDiscount,
+  reserveCoupon,
+  releaseCoupon,
+  commitCoupon,
   computeRefund,
   createOrder,
   verifyPayment as gatewayVerify,
@@ -389,18 +392,34 @@ export const createPaymentOrder = catchAsync(async (req, res) => {
   }
   if (!ride.feeAmount) throw ApiError.badRequest('Fee not set for this ride');
 
-  // Redeem cashback points as a discount on the online fee.
+  // Any coupon held from an earlier attempt at this checkout goes back on the
+  // shelf first, so re-opening payment never quietly burns a second one.
+  await releaseCoupon(ride._id);
+
   let discount = 0;
+  let couponCode = null;
+
+  // A coupon comes off the fee first, then points cover what is left. Riders
+  // read a coupon as "the offer", so it should be the part that clearly applies.
+  if (req.body.couponCode) {
+    const claim = await reserveCoupon(req.body.couponCode, { user: req.user, ride });
+    discount += claim.discount;
+    couponCode = claim.coupon.code;
+    ride.coupon = { code: claim.coupon.code, discount: claim.discount };
+  }
+
   if (req.body.usePoints && req.user.points > 0) {
-    discount = pointsToDiscount(req.user.points, ride.feeAmount);
-    if (discount > 0) {
-      const pointsUsed = discount; // 1 point = ₹1 by default
-      req.user.points = Math.max(0, req.user.points - pointsUsed);
+    const remainingFee = Math.max(0, ride.feeAmount - discount);
+    const fromPoints = pointsToDiscount(req.user.points, remainingFee);
+    if (fromPoints > 0) {
+      req.user.points = Math.max(0, req.user.points - fromPoints); // 1 point = ₹1
       await req.user.save();
-      ride.pointsRedeemed = pointsUsed;
-      ride.discount = discount;
+      ride.pointsRedeemed = fromPoints;
+      discount += fromPoints;
     }
   }
+
+  ride.discount = discount;
   const payable = Math.max(0, ride.feeAmount - discount);
 
   const order = await createOrder({ amount: payable, receipt: `ride_${ride._id}` });
@@ -428,6 +447,7 @@ export const createPaymentOrder = catchAsync(async (req, res) => {
     feeAmount: payable,
     discount,
     pointsRedeemed: ride.pointsRedeemed,
+    couponCode,
     // Dev convenience: the code is delivered out-of-band in production.
     devPaymentOtp: env.nodeEnv === 'production' ? undefined : ride.verification.payment.code,
   });
@@ -448,6 +468,7 @@ export const verifyRidePayment = catchAsync(async (req, res) => {
   const valid = await gatewayVerify({ orderId, paymentId, signature });
   if (!valid) {
     payment.status = 'failed';
+    await releaseCoupon(ride._id); // a declined card must not consume the coupon
     await payment.save();
     throw ApiError.badRequest('Payment verification failed');
   }
@@ -493,6 +514,7 @@ export const cancelRide = catchAsync(async (req, res) => {
     }
   }
 
+  await releaseCoupon(ride._id); // cancelled bookings return the coupon to stock
   ride.status = RIDE_STATUS.CANCELLED;
   ride.cancellation = { by: 'customer', reason: req.body.reason, at: new Date(), refundAmount: refundInfo.refundAmount };
   await ride.save();

@@ -17,6 +17,8 @@ export { WalletTransaction } from './models/WalletTransaction.js';
 export { DriverRoute } from './models/DriverRoute.js';
 export { Referral } from './models/Referral.js';
 export { ReferralEarning } from './models/ReferralEarning.js';
+export { Coupon } from './models/Coupon.js';
+export { CouponRedemption } from './models/CouponRedemption.js';
 export { LocationShare } from './models/LocationShare.js';
 export { Contact, normalizePhone } from './models/Contact.js';
 export { SosAlert } from './models/SosAlert.js';
@@ -63,6 +65,13 @@ export {
   payCustomerRideCommission,
   pointsToDiscount,
 } from './services/referralService.js';
+export {
+  validateCoupon,
+  reserveCoupon,
+  releaseCoupon,
+  commitCoupon,
+  discountFor,
+} from './services/couponService.js';
 export { fetchArrivalDelay } from './services/delayService.js';
 export { seedDatabase, isDatabaseEmpty, needsSeeding } from './seedData.js';
 export { requestOtp, verifyOtp } from './services/otpService.js';

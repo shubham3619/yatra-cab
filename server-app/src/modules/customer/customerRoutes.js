@@ -8,6 +8,7 @@ import {
   sosSchema,
   shareSchema,
   redeemSchema,
+  couponCheckSchema,
   paymentVerifySchema,
   cancelSchema,
   rateSchema,
@@ -31,6 +32,7 @@ import {
 } from './customerController.js';
 import { browseDailyRoutes, bookDailyRoute } from './discoverController.js';
 import { nearbyDrivers } from './liveController.js';
+import { checkCoupon, availableCoupons } from './couponController.js';
 import { raiseSos, createShare } from './safetyController.js';
 import { myReferral, myReferralEarnings } from './referralController.js';
 import { listContacts, saveContacts, deleteContact, purgeContacts } from './contactsController.js';
@@ -47,6 +49,8 @@ router.get('/rides', listMyRides);
 router.get('/rides/:id', getRide);
 router.get('/rides/:id/bids', getRideBids);
 router.post('/rides/:id/accept-bid/:bidId', acceptBid);
+router.get('/coupons', availableCoupons);
+router.post('/rides/:id/coupon/check', validate(couponCheckSchema), checkCoupon);
 router.post('/rides/:id/payment/order', validate(redeemSchema), createPaymentOrder);
 router.post('/rides/:id/payment/verify', validate(paymentVerifySchema), verifyRidePayment);
 router.patch('/rides/:id/cancel', validate(cancelSchema), cancelRide);
