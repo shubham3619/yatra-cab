@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Crosshair } from 'lucide-react';
-import { carMarkerHtml } from '@yatracab/ui';
+import { carMarkerHtml, CAR_ASPECT } from '@yatracab/ui';
 
 const JAIPUR = [26.9124, 75.7873];
 
@@ -20,8 +20,15 @@ const pinIcon = L.divIcon({
 });
 
 // Shared with the ops map so both stay in step.
+const CAR_W = 38;
+const CAR_H = Math.round(CAR_W / CAR_ASPECT);
 const carIcon = (heading = 0, active = false) =>
-  L.divIcon({ className: '', html: carMarkerHtml({ heading, active, size: 30 }), iconSize: [30, 30], iconAnchor: [15, 15] });
+  L.divIcon({
+    className: '',
+    html: carMarkerHtml({ heading, active, size: CAR_W }),
+    iconSize: [CAR_W, CAR_H],
+    iconAnchor: [CAR_W / 2, CAR_H / 2],
+  });
 
 /**
  * Live OpenStreetMap panel. Centers on the user's GPS position (fallback:

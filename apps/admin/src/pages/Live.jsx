@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Card, CardBody, Badge, PageHeader, QueryBoundary, LoadingScreen, EmptyState, carMarkerHtml } from '@yatracab/ui';
+import { Card, CardBody, Badge, PageHeader, QueryBoundary, LoadingScreen, EmptyState, carMarkerHtml, CAR_ASPECT } from '@yatracab/ui';
 import { Radio, Car, Wifi, WifiOff } from 'lucide-react';
 import { api } from '../api.js';
 import { getSocket } from '../socket.js';
@@ -10,8 +10,15 @@ import { getSocket } from '../socket.js';
 const JAIPUR = [26.9124, 75.7873];
 
 // Busy cars are accented, idle ones dark, so a glance shows utilisation.
+const CAR_W = 34;
+const CAR_H = Math.round(CAR_W / CAR_ASPECT);
 const carIcon = (heading = 0, busy = false) =>
-  L.divIcon({ className: '', html: carMarkerHtml({ heading, active: busy, size: 28 }), iconSize: [28, 28], iconAnchor: [14, 14] });
+  L.divIcon({
+    className: '',
+    html: carMarkerHtml({ heading, active: busy, size: CAR_W }),
+    iconSize: [CAR_W, CAR_H],
+    iconAnchor: [CAR_W / 2, CAR_H / 2],
+  });
 
 export default function Live() {
   const holderRef = useRef(null);

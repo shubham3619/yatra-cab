@@ -1,34 +1,44 @@
 /**
- * Map marker for a vehicle, shared by the rider and ops maps.
+ * Vehicle marker for the rider and ops maps — a car sitting on the road, not a
+ * pin. No badge behind it: the badge made it read as an icon in a UI rather
+ * than a vehicle in traffic.
  *
- * Side profile rather than top-down: at ~30px a top-down car reads as a blob,
- * while a silhouette with a cabin and two wheels is unmistakably a car.
+ * Legibility over map tiles comes from a white outline and a ground shadow
+ * instead, which hold up over roads, parks and water alike. Checked against a
+ * real OSM tile rather than a white page, because a marker that reads on paper
+ * can disappear on a yellow arterial road.
  *
- * Because it is a side view it is FLIPPED by direction of travel, not rotated.
- * Rotating a side-on car to a northerly heading would show it driving up a
- * wall; mirroring it left/right is how the direction actually reads.
+ * Side profile, so it is FLIPPED by direction of travel rather than rotated —
+ * rotating a side-on car to a northerly heading draws it climbing a wall.
  */
+const TAXI = '#f5c542'; // the ride you are tracking / a car on a trip
+const IDLE = '#1f2937'; // ambient traffic — present, but not competing
+
 export const facesLeft = (heading) =>
   Number.isFinite(Number(heading)) && Number(heading) > 180 && Number(heading) < 360;
 
-/**
- * @param {object}  opts
- * @param {number}  opts.heading  degrees, 0 = north
- * @param {boolean} opts.active   the ride being tracked / a car on a trip
- * @param {number}  opts.size     px
- */
-export function carMarkerHtml({ heading, active = false, size = 30 } = {}) {
-  const bg = active ? 'rgb(var(--yc-accent))' : '#1c1917';
-  const flip = facesLeft(heading) ? ' scaleX(-1)' : '';
-  const glyph = Math.round(size * 0.82);
+export const CAR_ASPECT = 34 / 30; // viewBox is wider than it is tall
 
-  return `<div style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;
-      border-radius:${Math.round(size * 0.3)}px;background:${bg};border:2px solid #fff;
-      box-shadow:0 4px 12px -2px rgba(0,0,0,.45);transform:${flip || 'none'};transition:transform .3s ease">
-      <svg width="${glyph}" height="${glyph}" viewBox="0 0 32 32">
-        <path d="M3.2 21.2v-2.4c0-1.3.7-2.1 2-2.4l4.6-.9c2.4-2.6 4.7-3.9 7.2-3.9h2.6c2.3 0 4.2 1 5.7 3l1.9 2.4 1.6.4c1.3.3 2 1.1 2 2.4v1.4z" fill="#fff"/>
-        <circle cx="10.2" cy="21.4" r="3.6" fill="#fff"/><circle cx="10.2" cy="21.4" r="1.7" fill="${bg}"/>
-        <circle cx="23.2" cy="21.4" r="3.6" fill="#fff"/><circle cx="23.2" cy="21.4" r="1.7" fill="${bg}"/>
-        <path d="M12.2 15.2c1.8-1.7 3.5-2.5 5.2-2.5h1.9c1.6 0 3 .8 4.1 2.5z" fill="${bg}"/>
-      </svg></div>`;
+/**
+ * @param {number}  heading  degrees, 0 = north
+ * @param {boolean} active   the tracked ride / a car mid-trip
+ * @param {number}  size     px width
+ */
+export function carMarkerHtml({ heading, active = false, size = 38 } = {}) {
+  const body = active ? TAXI : IDLE;
+  const wheel = '#111827';
+  const flip = facesLeft(heading) ? 'scaleX(-1)' : 'none';
+  const h = Math.round(size / CAR_ASPECT);
+
+  return `<div style="width:${size}px;height:${h}px;transform:${flip};transition:transform .3s ease">
+    <svg width="${size}" height="${h}" viewBox="0 0 34 30" style="display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4))">
+      <ellipse cx="16.5" cy="25.6" rx="11" ry="2.1" fill="rgba(0,0,0,.25)"/>
+      <path d="M3.2 21.2v-2.4c0-1.3.7-2.1 2-2.4l4.6-.9c2.4-2.6 4.7-3.9 7.2-3.9h2.6c2.3 0 4.2 1 5.7 3l1.9 2.4 1.6.4c1.3.3 2 1.1 2 2.4v1.4z"
+        fill="${body}" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M12.2 15.2c1.8-1.7 3.5-2.5 5.2-2.5h1.9c1.6 0 3 .8 4.1 2.5z" fill="#1c1917"/>
+      <circle cx="10.2" cy="21.4" r="3.7" fill="${wheel}" stroke="#fff" stroke-width="1.1"/>
+      <circle cx="10.2" cy="21.4" r="1.4" fill="#fff"/>
+      <circle cx="23.2" cy="21.4" r="3.7" fill="${wheel}" stroke="#fff" stroke-width="1.1"/>
+      <circle cx="23.2" cy="21.4" r="1.4" fill="#fff"/>
+    </svg></div>`;
 }
