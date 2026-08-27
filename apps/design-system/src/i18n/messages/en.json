@@ -22,7 +22,6 @@
   "Nav": {
     "home": "Home",
     "book": "Book",
-    "discover": "Discover",
     "myRides": "My Rides",
     "rewards": "Rewards",
     "profile": "Profile",
@@ -93,18 +92,10 @@
     "roundTripText": "Outstation & return",
     "popularRoutes": "{count} popular routes",
     "bookNow": "Book now",
-    "shareSeat": "Share a Seat",
-    "shareSeatText": "Per-seat carpooling on daily routes — pay only for your seat.",
-    "ridesRunning": "{count} rides running",
-    "findSeat": "Find a seat",
     "referTitle": "Refer & Kamao — chain rewards",
     "referText": "You refer a friend, they refer their friend — their rides earn you a % too. Lifetime, auto-credited.",
     "pts": "{n} pts",
-    "startChain": "Start your chain",
-    "todayCount": "{count} today",
-    "payOnlyYourSeat": "Pay only for your seat, not the whole cab.",
-    "splitFare": "Split the fare — pay for one seat",
-    "dailyRoutesHint": "Drivers publish routes every morning"
+    "startChain": "Start your chain"
   },
   "Book": {
     "title": "Book a ride",
@@ -176,30 +167,6 @@
     "cancel": "Cancel",
     "notSupported": "Location not supported on this device",
     "couldNotLocate": "Couldn't get your location"
-  },
-  "Discover": {
-    "title": "Discover daily routes",
-    "subtitle": "Drivers running your route today — book a seat or the whole cab.",
-    "nearMe": "Near me",
-    "nearMeOn": "Near me ✓",
-    "whereGoing": "Where are you going?",
-    "from": "From",
-    "to": "To",
-    "fromPlaceholder": "Pickup city or area",
-    "toPlaceholder": "Destination city",
-    "priorityHint": "Vehicles leaving from or passing near your pickup are shown first.",
-    "clear": "Clear",
-    "all": "All",
-    "womenOnly": "Women only",
-    "kmFromPickup": "{km} km from your pickup",
-    "emptySearchTitle": "No vehicles on this route yet",
-    "emptySearchText": "Try a nearby city, widen your filters, or clear the search to see everything running today.",
-    "emptyTitle": "No daily routes near you yet",
-    "emptyText": "Try turning off filters, or check back soon — drivers publish routes daily.",
-    "showingNear": "Showing routes near you",
-    "shareSeats": "Share seats",
-    "fullCab": "Full cab",
-    "notSupported": "Location not supported on this device"
   },
   "Rewards": {
     "title": "Rewards",
