@@ -18,6 +18,9 @@ const rideSchema = new mongoose.Schema(
     customer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     driver: { type: mongoose.Schema.Types.ObjectId, ref: 'Driver', index: true },
     route: { type: mongoose.Schema.Types.ObjectId, ref: 'Route' },
+    // Set when the ride came from a driver's published daily route — without
+    // this link there is no way to know how many seats that route has left.
+    dailyRoute: { type: mongoose.Schema.Types.ObjectId, ref: 'DriverRoute', index: true },
 
     mode: { type: String, enum: ['fixed', 'bidding'], required: true },
     // Full private cab vs per-seat carpooling.

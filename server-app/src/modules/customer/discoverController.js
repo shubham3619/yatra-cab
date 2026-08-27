@@ -28,6 +28,30 @@ const haversineKm = (aLat, aLng, bLat, bLng) => {
   return Math.round(2 * R * Math.asin(Math.sqrt(h)) * 10) / 10;
 };
 
+const dayRange = (when) => {
+  const start = new Date(when);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return { start, end };
+};
+
+/** Seats already booked on a daily route for a given departure day. */
+async function seatsTakenOn(routeId, when) {
+  const { start, end } = dayRange(when);
+  const [row] = await Ride.aggregate([
+    {
+      $match: {
+        dailyRoute: routeId,
+        scheduledAt: { $gte: start, $lt: end },
+        status: { $ne: RIDE_STATUS.CANCELLED }, // a cancelled booking frees its seats
+      },
+    },
+    { $group: { _id: null, seats: { $sum: '$seatsBooked' } } },
+  ]);
+  return row?.seats || 0;
+}
+
 // GET /customer/daily-routes?lat=&lng=&type=&womenOnly=
 // Driver's pre-set daily routine routes, nearest first (GPS priority sorting).
 export const browseDailyRoutes = catchAsync(async (req, res) => {
@@ -61,16 +85,22 @@ export const browseDailyRoutes = catchAsync(async (req, res) => {
     .populate({ path: 'driver', select: 'vehicle rating completedRides user', populate: { path: 'user', select: 'name' } })
     .lean();
 
-  // Surface the distance so the UI can show "2.4 km from you" on each result.
-  const withDistance =
-    lat && lng
-      ? routes.map((r) => ({
-          ...r,
-          distanceFromYouKm: haversineKm(Number(lat), Number(lng), r.origin?.lat, r.origin?.lng),
-        }))
-      : routes;
+  // Seats already taken today, so the UI can show real availability.
+  const today = new Date();
+  const booked = await Promise.all(
+    routes.map((r) => (r.bookingType === 'seat_share' ? seatsTakenOn(r._id, today) : 0))
+  );
 
-  return ok(res, { routes: withDistance, searched: Boolean(from || to || (lat && lng)) });
+  const enriched = routes.map((r, i) => ({
+    ...r,
+    seatsBooked: booked[i],
+    seatsLeft: Math.max(0, (r.seatsTotal || 0) - booked[i]),
+    ...(lat && lng
+      ? { distanceFromYouKm: haversineKm(Number(lat), Number(lng), r.origin?.lat, r.origin?.lng) }
+      : {}),
+  }));
+
+  return ok(res, { routes: enriched, searched: Boolean(from || to || (lat && lng)) });
 });
 
 // POST /customer/daily-routes/:id/book  { seats, scheduledAt }
@@ -87,6 +117,15 @@ export const bookDailyRoute = catchAsync(async (req, res) => {
 
   const isShare = route.bookingType === 'seat_share';
   const seats = isShare ? Math.min(req.body.seats || 1, route.seatsTotal) : 1;
+
+  // Capacity is per departure day: without this a 3-seat car could be booked
+  // by any number of riders, each passing the per-booking cap.
+  if (isShare) {
+    const taken = await seatsTakenOn(route._id, req.body.scheduledAt);
+    const free = Math.max(0, route.seatsTotal - taken);
+    if (free <= 0) throw ApiError.badRequest('This ride is fully booked for that day');
+    if (seats > free) throw ApiError.badRequest(`Only ${free} seat${free === 1 ? '' : 's'} left on this ride`);
+  }
   const fareAmount = isShare ? seatShareFare(route.perSeatFare, seats) : route.fullCabFare;
   if (!fareAmount) throw ApiError.badRequest('This route has no fare set');
 
@@ -96,6 +135,7 @@ export const bookDailyRoute = catchAsync(async (req, res) => {
     customer: req.user._id,
     driver: driver._id,
     mode: 'fixed',
+    dailyRoute: route._id,
     bookingType: route.bookingType,
     seatsTotal: route.seatsTotal,
     seatsBooked: isShare ? seats : 0,

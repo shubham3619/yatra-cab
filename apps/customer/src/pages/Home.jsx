@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth, Badge, toast, useTranslations } from '@yatracab/ui';
 import {
-  MapPin, Navigation, ArrowRight, Repeat, Users2, Gift, Sparkles, ChevronRight, Car, Route as RouteIcon,
+  MapPin, Navigation, ArrowRight, Repeat, Users2, IndianRupee, Gift, Sparkles, ChevronRight, Car, Route as RouteIcon,
 } from 'lucide-react';
 import { api } from '../api.js';
 import { LiveMap } from '../components/LiveMap.jsx';
 import { OneWayRoad, RoundTripRoad } from '../components/RoadIllustration.jsx';
+import { SeatShareArt } from '../components/SeatShareArt.jsx';
 import { PHOTOS } from '../lib/photos.js';
 
 // Reverse-geocode via OpenStreetMap (same provider as LocationInput).
@@ -19,6 +20,9 @@ async function reverseGeocode(lat, lng) {
   const data = await res.json();
   return data.display_name?.split(',').slice(0, 3).map((s) => s.trim()).join(', ');
 }
+
+// The API computes this per departure day; fall back for older payloads.
+const availableSeats = (r) => r?.seatsLeft ?? Math.max(0, (r?.seatsTotal ?? 0) - (r?.seatsBooked ?? 0));
 
 export default function Home() {
   const t = useTranslations('Home');
@@ -50,7 +54,9 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const seatRides = sharesQ.data?.filter((r) => r.bookingType === 'seat_share').length ?? null;
+  const shares = sharesQ.data?.filter((r) => r.bookingType === 'seat_share') ?? [];
+  const bookable = shares.filter((r) => availableSeats(r) > 0);
+  const seatRides = sharesQ.data ? bookable.length : null;
 
   return (
     <div className="-mx-4 -mt-5 animate-fade-in sm:mx-0 sm:mt-0">
@@ -99,17 +105,44 @@ export default function Home() {
           />
         </div>
 
-        {/* Share a seat — wide */}
-        <WideTile
+        {/* Share a seat — deliberately location-agnostic: a specific route is
+            only relevant to riders near it, so lead with the idea instead. */}
+        <Link
           to="/discover"
-          icon={Users2}
-          title={t('shareSeat')}
-          text={t('shareSeatText')}
-          badge={seatRides != null ? t('ridesRunning', { count: seatRides }) : null}
-          cta={t('findSeat')}
-          photo={PHOTOS.seatShare}
-          alt="Group of friends enjoying a drive together"
-        />
+          className="group block overflow-hidden rounded-2xl border border-ink-200 bg-gradient-to-br from-accent-soft via-white to-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-soft"
+        >
+          <div className="flex items-center gap-5 p-5">
+            <SeatShareArt className="h-24 w-auto shrink-0 text-accent sm:h-28" taken={1} total={4} />
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-2">
+                <p className="flex items-center gap-1.5 font-display text-lg font-bold text-ink-900">
+                  <Users2 size={17} className="text-accent" /> {t('shareSeat')}
+                </p>
+                {seatRides ? (
+                  <span className="shrink-0 rounded-full bg-ink-900 px-2.5 py-1 text-[11px] font-semibold text-white">
+                    {t('todayCount', { count: seatRides })}
+                  </span>
+                ) : null}
+              </div>
+
+              <p className="mt-1 text-sm text-ink-500">{t('payOnlyYourSeat')}</p>
+
+              <ul className="mt-2.5 space-y-1 text-xs text-ink-600">
+                <li className="flex items-center gap-1.5">
+                  <IndianRupee size={12} className="shrink-0 text-accent" /> {t('splitFare')}
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <Repeat size={12} className="shrink-0 text-accent" /> {t('dailyRoutesHint')}
+                </li>
+              </ul>
+
+              <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-ink-900">
+                {t('findSeat')} <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
+              </span>
+            </div>
+          </div>
+        </Link>
 
         {/* Refer & earn banner — chain referral mechanic */}
         <Link

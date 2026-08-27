@@ -100,7 +100,11 @@
     "referTitle": "Refer & Kamao — chain rewards",
     "referText": "You refer a friend, they refer their friend — their rides earn you a % too. Lifetime, auto-credited.",
     "pts": "{n} pts",
-    "startChain": "Start your chain"
+    "startChain": "Start your chain",
+    "todayCount": "{count} today",
+    "payOnlyYourSeat": "Pay only for your seat, not the whole cab.",
+    "splitFare": "Split the fare — pay for one seat",
+    "dailyRoutesHint": "Drivers publish routes every morning"
   },
   "Book": {
     "title": "Book a ride",
