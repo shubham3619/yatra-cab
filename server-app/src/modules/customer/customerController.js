@@ -372,7 +372,21 @@ export const acceptBid = catchAsync(async (req, res) => {
 // POST /customer/rides/:id/payment/order  (optionally redeem cashback points)
 export const createPaymentOrder = catchAsync(async (req, res) => {
   const ride = await ownRide(req.params.id, req.user._id);
-  if (ride.status !== RIDE_STATUS.PENDING_PAYMENT) throw ApiError.badRequest('Ride is not awaiting payment');
+
+  // TESTING AFFORDANCE — remove once the payment model is decided.
+  // Quoted rides confirm without any online payment (the driver's wallet pays
+  // the commission), so nothing in the UI reaches the gateway. Allowing an
+  // OPTIONAL advance on a confirmed ride makes the Razorpay flow reachable for
+  // testing without changing how bookings actually work.
+  const optionalAdvance = ride.status === RIDE_STATUS.CONFIRMED;
+  if (ride.status !== RIDE_STATUS.PENDING_PAYMENT && !optionalAdvance) {
+    throw ApiError.badRequest('Ride is not awaiting payment');
+  }
+  if (!ride.feeAmount && optionalAdvance) {
+    // Derive a nominal advance from the agreed fare so there is something to charge.
+    ride.feeAmount = Math.max(1, Math.round((ride.fareAmount || 0) * (env.business.feePercent / 100)));
+    await ride.save();
+  }
   if (!ride.feeAmount) throw ApiError.badRequest('Fee not set for this ride');
 
   // Redeem cashback points as a discount on the online fee.

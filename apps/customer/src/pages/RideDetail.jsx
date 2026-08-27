@@ -121,6 +121,10 @@ export default function RideDetail() {
 
             {/* State-specific panels */}
             {ride.status === 'pending_payment' && <PaymentPanel ride={ride} onDone={refetchAll} />}
+            {/* TESTING — quoted rides confirm without an online payment, so this
+                optional card is the only way to reach the gateway. Remove once
+                the payment model is settled. */}
+            {ride.status === 'confirmed' && <PaymentPanel ride={ride} optional onDone={refetchAll} />}
             {isBidding && <BidsPanel rideId={id} bidsQuery={bidsQuery} onAccepted={refetchAll} />}
             {['confirmed', 'ongoing'].includes(ride.status) && <ActivePanel ride={ride} driverLoc={driverLoc} onChange={refetchAll} />}
             {ride.status === 'completed' && <CompletedPanel ride={ride} onRated={refetchAll} />}
@@ -152,7 +156,7 @@ function MoneyRow({ label, value, hint, bold }) {
   );
 }
 
-function PaymentPanel({ ride, onDone }) {
+function PaymentPanel({ ride, optional = false, onDone }) {
   const { user, refreshMe } = useAuth();
   const [open, setOpen] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -208,7 +212,15 @@ function PaymentPanel({ ride, onDone }) {
 
   return (
     <Card>
-      <CardHeader title="Complete your booking" subtitle="Pay the advance Booking & Safety Fee to confirm." icon={IndianRupee} />
+      <CardHeader
+        title={optional ? 'Pay an advance (optional)' : 'Complete your booking'}
+        subtitle={
+          optional
+            ? 'Not required — your fare is cash to the driver. Available for testing the payment flow.'
+            : 'Pay the advance Booking & Safety Fee to confirm.'
+        }
+        icon={IndianRupee}
+      />
       <CardBody>
         <div className="rounded-xl bg-ink-50 p-4">
           <MoneyRow label="Ride fare" value={inr(ride.fareAmount)} hint="cash to driver" />

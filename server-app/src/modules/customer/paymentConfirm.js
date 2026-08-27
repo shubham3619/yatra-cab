@@ -27,6 +27,10 @@ const otp6 = () => String(Math.floor(100000 + Math.random() * 900000));
  *        stays free of the controller's dependency graph.
  */
 export async function confirmPaidRide({ payment, ride, paymentId, signature, assignDriver }) {
+  // An optional advance on an already-confirmed ride is just a payment: record
+  // it, but do not re-run assignment or reissue the rider's codes.
+  const alreadyLive = ride.status === RIDE_STATUS.CONFIRMED;
+
   if (payment.status === 'paid') {
     logger.info(`[payment] ${payment.orderId} already confirmed — ignoring duplicate`);
     return { ride, alreadyConfirmed: true };
@@ -37,6 +41,8 @@ export async function confirmPaidRide({ payment, ride, paymentId, signature, ass
   if (signature) payment.signature = signature;
   payment.paidAt = new Date();
   await payment.save();
+
+  if (alreadyLive) return { ride, alreadyConfirmed: false, optionalPayment: true };
 
   if (ride.mode === 'fixed' && !ride.driver && assignDriver) {
     const driver = await assignDriver(ride);
