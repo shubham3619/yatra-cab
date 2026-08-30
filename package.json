@@ -27,7 +27,8 @@
     "seed:contacts": "node ./scripts/seed-contacts.js",
     "test:referral": "node ./scripts/test-referral-engine.mjs",
     "check:i18n": "node ./scripts/check-i18n.mjs",
-    "build": "npm run build --workspace @yatracab/customer && npm run build --workspace @yatracab/driver && npm run build --workspace @yatracab/admin"
+    "build": "npm run build --workspace @yatracab/customer && npm run build --workspace @yatracab/driver && npm run build --workspace @yatracab/admin",
+    "test:payments": "node ./scripts/test-payments.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.0.1",
