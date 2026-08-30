@@ -170,12 +170,14 @@ function PaymentPanel({ ride, optional = false, onDone }) {
 
   // Read the points balance from the referral endpoint (auth user may not carry it).
   const refQuery = useQuery({ queryKey: ['referral'], queryFn: () => api.get('/customer/referral') });
+  // Riders should not have to already know a code — show what is running.
+  const offersQuery = useQuery({ queryKey: ['coupons'], queryFn: () => api.get('/customer/coupons').then((r) => r.coupons) });
   const points = refQuery.data?.points ?? user?.points ?? 0;
 
   // Checked before paying, so the rider sees the saving without the code being
   // taken from stock — it is only claimed when they actually pay.
-  const applyCoupon = async () => {
-    const code = couponInput.toUpperCase().trim();
+  const applyCoupon = async (fromOffer) => {
+    const code = (fromOffer || couponInput).toUpperCase().trim();
     if (!code) return;
     setChecking(true);
     setCouponError('');
@@ -279,9 +281,35 @@ function PaymentPanel({ ride, optional = false, onDone }) {
                   placeholder="Coupon code"
                   className="flex-1 tracking-widest"
                 />
-                <Button variant="soft" loading={checking} disabled={!couponInput.trim()} onClick={applyCoupon}>Apply</Button>
+                <Button variant="soft" loading={checking} disabled={!couponInput.trim()} onClick={() => applyCoupon()}>Apply</Button>
               </div>
               {couponError && <p className="mt-1.5 text-xs text-danger">{couponError}</p>}
+
+              {offersQuery.data?.length > 0 && (
+                <div className="mt-2.5">
+                  <p className="mb-1.5 flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-ink-400">
+                    <Ticket size={11} /> Offers available
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {offersQuery.data.map((o) => (
+                      <button
+                        key={o.code}
+                        type="button"
+                        disabled={checking}
+                        onClick={() => { setCouponInput(o.code); applyCoupon(o.code); }}
+                        className="rounded-lg border border-dashed border-accent/50 bg-accent-soft px-2.5 py-1.5 text-left transition-colors hover:border-accent disabled:opacity-60"
+                        title={o.description || ''}
+                      >
+                        <span className="block text-xs font-bold tracking-wide text-accent">{o.code}</span>
+                        <span className="block text-[11px] text-ink-500">
+                          {o.type === 'percent' ? `${o.value}% off` : `${inr(o.value)} off`}
+                          {o.minFare > 0 ? ` · over ${inr(o.minFare)}` : ''}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -324,16 +352,25 @@ function PaymentPanel({ ride, optional = false, onDone }) {
             {processing ? <Loader2 size={30} className="animate-spin" /> : <IndianRupee size={30} />}
           </div>
           {(() => {
-            const previewDiscount = usePoints ? Math.min(points, ride.feeAmount) : 0;
+            // Mirrors the server: the coupon comes off first, then points cover
+            // what is left. If this preview disagrees with that order the rider
+            // sees one number here and is charged another.
+            const couponOff = coupon?.discount || 0;
+            const pointsOff = usePoints ? Math.min(points, Math.max(0, ride.feeAmount - couponOff)) : 0;
+            const previewDiscount = couponOff + pointsOff;
             const payable = applied ? applied.feeAmount : Math.max(0, ride.feeAmount - previewDiscount);
-            const shownDiscount = applied ? applied.discount : previewDiscount;
             return (
               <>
                 <p className="text-3xl font-semibold text-ink-900">{inr(payable)}</p>
-                <p className="mt-1 text-sm text-ink-500">Booking & Safety Fee</p>
-                {shownDiscount > 0 && (
-                  <p className="mt-1 flex items-center justify-center gap-1 text-sm font-medium text-success">
-                    <Sparkles size={13} /> {inr(shownDiscount)} off with points
+                <p className="mt-1 text-sm text-ink-500">Booking &amp; Safety Fee</p>
+                {previewDiscount > 0 && (
+                  <p className="mt-1 flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-sm font-medium text-success">
+                    {couponOff > 0 && (
+                      <span className="inline-flex items-center gap-1"><Ticket size={13} /> {inr(couponOff)} off · {coupon.code}</span>
+                    )}
+                    {pointsOff > 0 && (
+                      <span className="inline-flex items-center gap-1"><Sparkles size={13} /> {inr(pointsOff)} off with points</span>
+                    )}
                   </p>
                 )}
               </>
