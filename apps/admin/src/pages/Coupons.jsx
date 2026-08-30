@@ -217,13 +217,16 @@ function CouponForm({ editing, form, set, setForm, saving, onSave, onClose }) {
           </Field>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          {form.type === 'percent' && (
-            <Field label="Max discount (₹)" hint="0 = uncapped">
-              <Input type="number" min={0} value={form.maxDiscount} onChange={set('maxDiscount')} />
-            </Field>
-          )}
-          <Field label="Minimum fare (₹)" hint="0 = any ride">
+        {/* Max discount only exists for percent coupons, so it gets its own row
+            rather than leaving a hole in a two-column grid. */}
+        {form.type === 'percent' && (
+          <Field label="Maximum discount (₹)" hint="0 = uncapped">
+            <Input type="number" min={0} value={form.maxDiscount} onChange={set('maxDiscount')} />
+          </Field>
+        )}
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Field label="Minimum fare (₹)" hint="0 = any">
             <Input type="number" min={0} value={form.minFare} onChange={set('minFare')} />
           </Field>
           <Field label="Per rider limit">
