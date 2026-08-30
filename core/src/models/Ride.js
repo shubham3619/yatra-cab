@@ -56,8 +56,8 @@ const rideSchema = new mongoose.Schema(
     // than the agreed fare — the ride cannot be closed without it.
     verification: {
       payment: { code: String, verifiedAt: Date },
-      start: { code: String, verifiedAt: Date },
-      end: { code: String, verifiedAt: Date },
+      start: { code: String, verifiedAt: Date, sentAt: Date },
+      end: { code: String, verifiedAt: Date, sentAt: Date },
     },
 
     // Snapshot of trip endpoints (denormalised for dynamic point-to-point trips).

@@ -22,6 +22,7 @@ export default function RideDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [driverLoc, setDriverLoc] = useState(null);
+  const [otp, setOtp] = useState(null); // { phase, code } — pushed when the driver asks
 
   const rideQuery = useQuery({ queryKey: ['ride', id], queryFn: () => api.get(`/customer/rides/${id}`).then((r) => r.ride) });
   const ride = rideQuery.data;
@@ -42,16 +43,19 @@ export default function RideDetail() {
     const onBid = () => qc.invalidateQueries({ queryKey: ['ride-bids', id] });
     const onUpdate = () => { qc.invalidateQueries({ queryKey: ['ride', id] }); qc.invalidateQueries({ queryKey: ['ride-bids', id] }); };
     const onLoc = (p) => p.rideId === id && setDriverLoc({ lat: p.lat, lng: p.lng, heading: p.heading, at: p.at });
+    const onOtp = (p) => p.rideId === id && setOtp({ phase: p.phase, code: p.code });
     socket.on('ride:bid_new', onBid);
     socket.on('ride:updated', onUpdate);
     socket.on('ride:started', onUpdate);
     socket.on('ride:driver_location', onLoc);
+    socket.on('ride:otp', onOtp);
     return () => {
       socket.emit('ride:leave', id);
       socket.off('ride:bid_new', onBid);
       socket.off('ride:updated', onUpdate);
       socket.off('ride:started', onUpdate);
       socket.off('ride:driver_location', onLoc);
+      socket.off('ride:otp', onOtp);
     };
   }, [id, qc]);
 
@@ -127,7 +131,7 @@ export default function RideDetail() {
                 the payment model is settled. */}
             {ride.status === 'confirmed' && <PaymentPanel ride={ride} optional onDone={refetchAll} />}
             {isBidding && <BidsPanel rideId={id} bidsQuery={bidsQuery} onAccepted={refetchAll} />}
-            {['confirmed', 'ongoing'].includes(ride.status) && <ActivePanel ride={ride} driverLoc={driverLoc} onChange={refetchAll} />}
+            {['confirmed', 'ongoing'].includes(ride.status) && <ActivePanel ride={ride} driverLoc={driverLoc} otp={otp} onChange={refetchAll} />}
             {ride.status === 'completed' && <CompletedPanel ride={ride} onRated={refetchAll} />}
             {['cancelled', 'no_show'].includes(ride.status) && <CancelledPanel ride={ride} />}
           </>
@@ -544,7 +548,31 @@ function SafetyRow({ ride }) {
   );
 }
 
-function ActivePanel({ ride, driverLoc, onChange }) {
+/**
+ * The driver has asked for a checkpoint code; this is where the rider reads it.
+ * Deliberately loud — it is the one thing on screen they need to act on, and
+ * for the drop-off code it is also their leverage: withhold it and the ride
+ * cannot be closed until the fare is what was agreed.
+ */
+function OtpCallout({ phase, code }) {
+  const starting = phase === 'start';
+  return (
+    <div className="rounded-xl border border-accent/40 bg-accent-soft p-4">
+      <p className="flex items-center gap-1.5 text-sm font-semibold text-ink-900">
+        <ShieldCheck size={15} className="text-accent" />
+        {starting ? 'Your start code' : 'Your drop-off code'}
+      </p>
+      <p className="my-2 font-display text-3xl font-bold tracking-[0.3em] text-accent">{code}</p>
+      <p className="text-xs text-ink-600">
+        {starting
+          ? 'Read this to your driver once you are in the right cab.'
+          : 'Share this only when the fare matches what you agreed.'}
+      </p>
+    </div>
+  );
+}
+
+function ActivePanel({ ride, driverLoc, otp, onChange }) {
   const cancel = useMutation({
     mutationFn: () => api.patch(`/customer/rides/${ride._id}/cancel`, { reason: 'Changed plans' }),
     onSuccess: (res) => { toast.success(res.refund?.reasonLabel || 'Ride cancelled'); onChange(); },
@@ -561,6 +589,8 @@ function ActivePanel({ ride, driverLoc, onChange }) {
         icon={ShieldCheck}
       />
       <CardBody className="space-y-4">
+        {otp && <OtpCallout phase={otp.phase} code={otp.code} />}
+
         <DriverCard ride={ride} />
 
         {/* Live tracking: the driver's car on the map, moving as their phone
